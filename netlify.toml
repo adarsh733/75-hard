@@ -2,6 +2,9 @@
   command = "node build.js"
   publish = "."
 
+[build.environment]
+  SECRETS_SCAN_OMIT_KEYS = "SUPABASE_KEY,SUPABASE_URL"
+
 [[headers]]
   for = "/*"
   [headers.values]
