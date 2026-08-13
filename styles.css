@@ -818,10 +818,14 @@ body[data-theme="light"] .theme-segmented-control {
   color: var(--text-main);
 }
 
-/* SECURITY MODAL STYLING */
+/* SECURITY MODAL STYLING (ALWAYS HIGHEST Z-INDEX LAYER) */
+#security-modal {
+  z-index: 1200 !important;
+}
+
 .security-modal-card {
   border: 2px solid #ff3b30;
-  box-shadow: 0 0 35px rgba(255, 59, 48, 0.35);
+  box-shadow: 0 0 40px rgba(255, 59, 48, 0.45);
 }
 
 .security-header {

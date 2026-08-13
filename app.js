@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   PERSONALIZED SETTINGS PER DEVICE PROFILE
+   SECURE MODAL STACKING & VERIFICATION LOGIC
    ========================================== */
 
 (function () {
@@ -248,7 +248,6 @@
       if (dom.idU1Opt) dom.idU1Opt.classList.remove('active');
     }
 
-    // DYNAMICALLY TOGGLE SETTINGS HABIT GROUPS BASED ON ACTIVE PROFILE
     if (!state.showPartnerHabitsInSettings) {
       if (userKey === 'u1') {
         if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.remove('hidden');
@@ -936,7 +935,7 @@
       dom.resetSupabaseBtn.addEventListener('click', openSecurityModal);
     }
 
-    // Security Reset Verification Handlers
+    // Security Reset Verification Handlers (Clean modal switching)
     if (dom.closeSecurityModalBtn) {
       dom.closeSecurityModalBtn.addEventListener('click', closeSecurityModal);
     }
@@ -949,13 +948,19 @@
   }
 
   function openSecurityModal() {
+    if (dom.settingsModal) dom.settingsModal.classList.add('hidden');
     if (dom.securityPhoneInput) dom.securityPhoneInput.value = '';
     if (dom.securityErrorMsg) dom.securityErrorMsg.classList.add('hidden');
     if (dom.securityModal) dom.securityModal.classList.remove('hidden');
+
+    setTimeout(() => {
+      if (dom.securityPhoneInput) dom.securityPhoneInput.focus();
+    }, 100);
   }
 
   function closeSecurityModal() {
     if (dom.securityModal) dom.securityModal.classList.add('hidden');
+    if (dom.settingsModal) dom.settingsModal.classList.remove('hidden');
   }
 
   async function confirmSecurityReset() {
@@ -970,8 +975,8 @@
           await state.supabaseClient.from('habit_history').delete().neq('date', '1970-01-01');
         }
         renderUI();
-        closeSecurityModal();
-        closeSettingsModal();
+        if (dom.securityModal) dom.securityModal.classList.add('hidden');
+        if (dom.settingsModal) dom.settingsModal.classList.add('hidden');
         showToast("🗑️ Master phone verified! Supabase table reset!");
       } catch (err) {
         console.error('Reset Supabase Error:', err);
