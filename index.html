@@ -268,7 +268,7 @@
     <div id="security-modal" class="modal-overlay hidden">
       <div class="modal-card security-modal-card">
         <div class="modal-header security-header">
-          <h3><i class="fa-solid fa-shield-halved"></i> Master Security Verification</h3>
+          <h3><i class="fa-solid fa-shield-halved"></i> Security Authorization Required</h3>
           <button id="close-security-modal-btn" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
@@ -276,7 +276,7 @@
             ⚠️ <strong>CRITICAL:</strong> This will permanently erase all 75 Hard habit data and chat history from Supabase.
           </p>
           <div class="settings-group">
-            <label for="security-phone-input">Enter Master Phone Number to Authorize:</label>
+            <label for="security-phone-input">Enter Master Phone Number to Authorize Reset:</label>
             <input type="tel" id="security-phone-input" placeholder="Enter phone number..." autocomplete="off">
             <span id="security-error-msg" class="security-error-msg hidden">❌ Incorrect phone number. Authorization denied!</span>
           </div>
@@ -284,7 +284,7 @@
         <div class="modal-footer">
           <button id="cancel-security-btn" class="btn btn-secondary">Cancel</button>
           <button id="confirm-security-reset-btn" class="btn btn-danger">
-            <i class="fa-solid fa-lock-open"></i> Authorize & Reset Data
+            <i class="fa-solid fa-trash-can"></i> Authorize & Reset Data
           </button>
         </div>
       </div>
@@ -431,10 +431,10 @@
 
           <!-- Reset Supabase Data Action (Secured with master phone verification) -->
           <div class="settings-group reset-zone">
-            <h4><i class="fa-solid fa-shield-halved"></i> Master Security Reset</h4>
-            <p class="help-text">Requires master phone verification (9479918338) to reset Supabase table:</p>
+            <h4><i class="fa-solid fa-triangle-exclamation"></i> Reset Table Data</h4>
+            <p class="help-text">Reset all test data in Supabase table so you can start Day 1 fresh:</p>
             <button id="reset-supabase-btn" class="btn btn-danger">
-              <i class="fa-solid fa-lock"></i> Secure Table Reset
+              <i class="fa-solid fa-trash-can"></i> Reset Table Data
             </button>
           </div>
 
