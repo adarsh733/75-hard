@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   SUPABASE LIVE SYNC + BANTER CHAT + POPUP BOOST
+   SUPABASE LIVE SYNC + FLOATING BANTER CHAT
    ========================================== */
 
 (function () {
@@ -41,7 +41,9 @@
     activeDateStr: formatDateToYYYYMMDD(new Date()),
     supabaseClient: null,
     isOnline: false,
-    readNudges: []
+    readNudges: [],
+    unreadChatCount: 0,
+    isChatOpen: false
   };
 
   // DOM Elements
@@ -70,6 +72,18 @@
     toast: document.getElementById('toast'),
     toastMsg: document.getElementById('toast-msg'),
 
+    // Floating Chat Button & Modal
+    floatingChatBtn: document.getElementById('floating-chat-btn'),
+    chatUnreadBadge: document.getElementById('chat-unread-badge'),
+    chatModal: document.getElementById('chat-modal'),
+    closeChatModalBtn: document.getElementById('close-chat-modal-btn'),
+    chatDatePill: document.getElementById('chat-date-pill'),
+    chatContainer: document.getElementById('chat-messages-container'),
+    chatEmptyState: document.getElementById('chat-empty-state'),
+    chatForm: document.getElementById('chat-form'),
+    chatSenderSelect: document.getElementById('chat-sender-select'),
+    chatInput: document.getElementById('chat-input'),
+
     // User 1 (Adarsh)
     u1Avatar: document.getElementById('u1-avatar'),
     u1NameDisplay: document.getElementById('u1-name-display'),
@@ -89,14 +103,6 @@
     u2Pct: document.getElementById('u2-pct'),
     u2HabitsContainer: document.getElementById('u2-habits-container'),
     u2BarFill: document.getElementById('u2-bar-fill'),
-
-    // Chat elements
-    chatDatePill: document.getElementById('chat-date-pill'),
-    chatContainer: document.getElementById('chat-messages-container'),
-    chatEmptyState: document.getElementById('chat-empty-state'),
-    chatForm: document.getElementById('chat-form'),
-    chatSenderSelect: document.getElementById('chat-sender-select'),
-    chatInput: document.getElementById('chat-input'),
 
     // Popup Encouragement Modal
     encouragementPopup: document.getElementById('encouragement-popup'),
@@ -240,23 +246,36 @@
           checkPendingPopupEncouragement();
         }
 
-        // Subscribe to live Postgres changes
+        // Subscribe to live Postgres changes across devices
         state.supabaseClient
           .channel('realtime:habit_history')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_history' }, (payload) => {
             if (payload.new && payload.new.date) {
+              const prevChatCount = (state.history[payload.new.date]?.chat || []).length;
+              
               const u1Payload = unpackPayload(payload.new.u1_ticks);
               const u2Payload = unpackPayload(payload.new.u2_ticks);
+
+              const newChatList = u1Payload.chat || u2Payload.chat || [];
 
               state.history[payload.new.date] = {
                 u1: u1Payload.ticks,
                 u2: u2Payload.ticks,
-                chat: u1Payload.chat || u2Payload.chat || [],
+                chat: newChatList,
                 nudge: u1Payload.nudge || u2Payload.nudge || null
               };
+              
               saveLocalHistory();
               renderUI();
               checkPendingPopupEncouragement();
+
+              // Trigger unread notification badge if chat modal is closed
+              if (newChatList.length > prevChatCount && !state.isChatOpen) {
+                state.unreadChatCount += (newChatList.length - prevChatCount);
+                updateUnreadChatBadge();
+                showToast(`💬 New banter message from partner!`);
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+              }
             }
           })
           .subscribe();
@@ -267,6 +286,15 @@
       }
     } else {
       updateSyncStatusBadge(false);
+    }
+  }
+
+  function updateUnreadChatBadge() {
+    if (state.unreadChatCount > 0) {
+      dom.chatUnreadBadge.textContent = state.unreadChatCount;
+      dom.chatUnreadBadge.classList.remove('hidden');
+    } else {
+      dom.chatUnreadBadge.classList.add('hidden');
     }
   }
 
@@ -513,7 +541,7 @@
     dom.banterMessage.textContent = msg;
   }
 
-  // RENDER DAILY BANTER CHAT MESSAGES
+  // RENDER DAILY BANTER CHAT MESSAGES inside Chat Modal Drawer
   function renderBanterChat() {
     const entry = getDayEntry(state.activeDateStr);
     const chatList = entry.chat || [];
@@ -551,7 +579,6 @@
       dom.chatContainer.appendChild(wrapEl);
     });
 
-    // Auto scroll chat to bottom
     dom.chatContainer.scrollTop = dom.chatContainer.scrollHeight;
   }
 
@@ -579,7 +606,6 @@
     await syncRowToSupabase(state.activeDateStr);
   }
 
-  // CHECK AND SHOW POPUP ENCOURAGEMENT WHEN PHONE OPENED
   function checkPendingPopupEncouragement() {
     const todayStr = formatDateToYYYYMMDD(new Date());
     const entry = getDayEntry(todayStr);
@@ -589,10 +615,8 @@
     const nudge = entry.nudge;
     if (!nudge.id) return;
 
-    // Check if already dismissed locally on this device
     if (state.readNudges.includes(nudge.id)) return;
 
-    // Show Popup Encouragement Modal
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
 
@@ -606,7 +630,6 @@
 
     dom.encouragementPopup.classList.remove('hidden');
 
-    // Store nudge ID on dismiss
     dom.encDismissBtn.onclick = () => {
       state.readNudges.push(nudge.id);
       saveReadNudges();
@@ -721,6 +744,20 @@
       }
     });
 
+    // FLOATING CHAT BUTTON HANDLER
+    dom.floatingChatBtn.addEventListener('click', () => {
+      state.isChatOpen = true;
+      state.unreadChatCount = 0;
+      updateUnreadChatBadge();
+      dom.chatModal.classList.remove('hidden');
+      renderBanterChat();
+    });
+
+    dom.closeChatModalBtn.addEventListener('click', () => {
+      state.isChatOpen = false;
+      dom.chatModal.classList.add('hidden');
+    });
+
     // Encouragement Nudge button opens Send Nudge Modal
     dom.nudgeBtn.addEventListener('click', () => {
       dom.sendNudgeModal.classList.remove('hidden');
@@ -730,7 +767,6 @@
       dom.sendNudgeModal.classList.add('hidden');
     });
 
-    // Preset nudge buttons
     document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const text = btn.getAttribute('data-text');
@@ -753,7 +789,6 @@
       postBanterMessage(dom.chatInput.value);
     });
 
-    // Quick emoji chips
     document.querySelectorAll('.emoji-chip').forEach(chip => {
       chip.addEventListener('click', () => {
         const text = chip.getAttribute('data-msg');

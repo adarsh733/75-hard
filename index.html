@@ -44,6 +44,13 @@
         <div id="sync-status" class="sync-badge supabase" title="Live sync connected">
           <i class="fa-solid fa-bolt"></i> <span>Supabase Live</span>
         </div>
+
+        <!-- Floating Chat Button with Notification Badge -->
+        <button id="floating-chat-btn" class="floating-chat-btn" title="Open Banter Chat">
+          <i class="fa-solid fa-comments"></i>
+          <span id="chat-unread-badge" class="chat-badge hidden">0</span>
+        </button>
+
         <button id="open-settings-btn" class="icon-btn" aria-label="Settings">
           <i class="fa-solid fa-gear"></i>
         </button>
@@ -162,42 +169,6 @@
 
     </main>
 
-    <!-- DAILY FUNNY BANTER CHAT SECTION -->
-    <section class="banter-chat-section">
-      <div class="chat-header">
-        <div class="chat-header-title">
-          <i class="fa-solid fa-comments"></i> <span>Daily Banter & Partner Chat</span>
-        </div>
-        <span class="chat-date-pill" id="chat-date-pill">Today</span>
-      </div>
-
-      <div class="chat-messages-container" id="chat-messages-container">
-        <!-- Messages rendered dynamically -->
-        <div class="chat-empty-state" id="chat-empty-state">
-          <span>💬 No banter messages for this day yet. Send a quick update or emoji below!</span>
-        </div>
-      </div>
-
-      <div class="quick-emojis-bar">
-        <button class="emoji-chip" data-msg="💧 Drinking water right now!">💧 Water</button>
-        <button class="emoji-chip" data-msg="🏋️ Workout finished! Your turn!">🏋️ Workout</button>
-        <button class="emoji-chip" data-msg="🥗 Eating clean today!">🥗 Clean Diet</button>
-        <button class="emoji-chip" data-msg="📖 Reading done!">📖 Reading</button>
-        <button class="emoji-chip" data-msg="🔥 75 Hard Champions!">🔥 Let's Go!</button>
-      </div>
-
-      <form id="chat-form" class="chat-input-form">
-        <select id="chat-sender-select" class="sender-select" aria-label="Select Sender">
-          <option value="u1">Adarsh</option>
-          <option value="u2">Sanjana</option>
-        </select>
-        <input type="text" id="chat-input" placeholder="Type funny banter or daily update..." autocomplete="off">
-        <button type="submit" class="send-chat-btn" aria-label="Send Message">
-          <i class="fa-solid fa-paper-plane"></i>
-        </button>
-      </form>
-    </section>
-
     <!-- INDIVIDUAL 75-DAY MASTER MATRICES (COMPARISON SECTION) -->
     <section class="matrices-comparison-section">
       <div class="matrices-title-block">
@@ -237,6 +208,49 @@
 
       </div>
     </section>
+
+    <!-- FLOATING CHAT DRAWER MODAL -->
+    <div id="chat-modal" class="modal-overlay hidden">
+      <div class="modal-card chat-modal-card">
+        <div class="modal-header">
+          <div class="chat-header-title">
+            <i class="fa-solid fa-comments"></i> <span>Daily Banter Chat</span>
+          </div>
+          <div class="chat-header-right">
+            <span class="chat-date-pill" id="chat-date-pill">Today</span>
+            <button id="close-chat-modal-btn" class="close-btn">&times;</button>
+          </div>
+        </div>
+        <div class="modal-body chat-modal-body">
+          
+          <div class="chat-messages-container" id="chat-messages-container">
+            <div class="chat-empty-state" id="chat-empty-state">
+              <span>💬 No banter messages for this day yet. Send a quick update or emoji below!</span>
+            </div>
+          </div>
+
+          <div class="quick-emojis-bar">
+            <button class="emoji-chip" data-msg="💧 Drinking water right now!">💧 Water</button>
+            <button class="emoji-chip" data-msg="🏋️ Workout finished! Your turn!">🏋️ Workout</button>
+            <button class="emoji-chip" data-msg="🥗 Eating clean today!">🥗 Clean Diet</button>
+            <button class="emoji-chip" data-msg="📖 Reading done!">📖 Reading</button>
+            <button class="emoji-chip" data-msg="🔥 75 Hard Champions!">🔥 Let's Go!</button>
+          </div>
+
+          <form id="chat-form" class="chat-input-form">
+            <select id="chat-sender-select" class="sender-select" aria-label="Select Sender">
+              <option value="u1">Adarsh</option>
+              <option value="u2">Sanjana</option>
+            </select>
+            <input type="text" id="chat-input" placeholder="Type funny banter..." autocomplete="off">
+            <button type="submit" class="send-chat-btn" aria-label="Send Message">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </form>
+
+        </div>
+      </div>
+    </div>
 
     <!-- Toast Notification -->
     <div id="toast" class="toast hidden">
