@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   SECURE MODAL STACKING & VERIFICATION LOGIC
+   NETLIFY ENV RUNTIME CONFIG INITIALIZATION
    ========================================== */
 
 (function () {
@@ -24,8 +24,9 @@
     "🥗 Clean Diet & No Sugar"
   ];
 
-  const DEFAULT_SUPABASE_URL = 'https://jamsrlijvqypdxucvhox.supabase.co';
-  const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphbXNybGlqdnF5cGR4dWN2aG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDczOTksImV4cCI6MjEwMjA4MzM5OX0.iInG76ebAetpdWrOefmqSlvpTeBqxt0z_RW_OUx6Ah4';
+  // READ CREDENTIALS FROM NETLIFY INJECTED RUNTIME (WINDOW.SUPABASE_URL / WINDOW.SUPABASE_KEY) OR LOCALSTORAGE
+  const GET_SUPABASE_URL = () => window.SUPABASE_URL || localStorage.getItem('75hard_supabase_url') || '';
+  const GET_SUPABASE_KEY = () => window.SUPABASE_KEY || localStorage.getItem('75hard_supabase_key') || '';
 
   const STORAGE_KEY_SETTINGS = '75hard_duo_settings';
   const STORAGE_KEY_DATA = '75hard_duo_history_data';
@@ -298,11 +299,14 @@
     } catch (e) {}
   }
 
-  // SUPABASE REALTIME INITIALIZATION & SYNC
+  // SUPABASE REALTIME INITIALIZATION & SYNC FROM ENVIRONMENT VARIABLES
   async function initSupabase() {
-    if (window.supabase) {
+    const targetUrl = GET_SUPABASE_URL();
+    const targetKey = GET_SUPABASE_KEY();
+
+    if (window.supabase && targetUrl && targetKey) {
       try {
-        state.supabaseClient = window.supabase.createClient(DEFAULT_SUPABASE_URL, DEFAULT_SUPABASE_KEY);
+        state.supabaseClient = window.supabase.createClient(targetUrl, targetKey);
         state.isOnline = true;
         updateSyncStatusBadge(true);
 

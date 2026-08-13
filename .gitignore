@@ -1,0 +1,10 @@
+# Local Runtime Environment Config
+config.js
+.env
+.env.local
+
+# OS / Editor junk
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
