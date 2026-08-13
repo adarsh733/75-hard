@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   NETLIFY ENV RUNTIME CONFIG INITIALIZATION
+   DYNAMIC SUPABASE RUNTIME & SETTINGS CONNECTION
    ========================================== */
 
 (function () {
@@ -24,9 +24,8 @@
     "🥗 Clean Diet & No Sugar"
   ];
 
-  // READ CREDENTIALS FROM NETLIFY INJECTED RUNTIME (WINDOW.SUPABASE_URL / WINDOW.SUPABASE_KEY) OR LOCALSTORAGE
-  const GET_SUPABASE_URL = () => window.SUPABASE_URL || localStorage.getItem('75hard_supabase_url') || '';
-  const GET_SUPABASE_KEY = () => window.SUPABASE_KEY || localStorage.getItem('75hard_supabase_key') || '';
+  const GET_SUPABASE_URL = () => (window.SUPABASE_URL && window.SUPABASE_URL.trim()) ? window.SUPABASE_URL.trim() : (localStorage.getItem('75hard_supabase_url') || '');
+  const GET_SUPABASE_KEY = () => (window.SUPABASE_KEY && window.SUPABASE_KEY.trim()) ? window.SUPABASE_KEY.trim() : (localStorage.getItem('75hard_supabase_key') || '');
 
   const STORAGE_KEY_SETTINGS = '75hard_duo_settings';
   const STORAGE_KEY_DATA = '75hard_duo_history_data';
@@ -61,6 +60,10 @@
     saveSettingsBtn: document.getElementById('save-settings-btn'),
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
+
+    // Supabase Inputs in Settings
+    supabaseUrlInput: document.getElementById('supabase-url-input'),
+    supabaseKeyInput: document.getElementById('supabase-key-input'),
 
     // Security Verification Modal DOM
     securityModal: document.getElementById('security-modal'),
@@ -299,7 +302,7 @@
     } catch (e) {}
   }
 
-  // SUPABASE REALTIME INITIALIZATION & SYNC FROM ENVIRONMENT VARIABLES
+  // SUPABASE REALTIME INITIALIZATION
   async function initSupabase() {
     const targetUrl = GET_SUPABASE_URL();
     const targetKey = GET_SUPABASE_KEY();
@@ -1005,6 +1008,9 @@
     dom.u1NameInput.value = state.settings.u1Name || 'Adarsh';
     dom.u2NameInput.value = state.settings.u2Name || 'Sanjana';
 
+    if (dom.supabaseUrlInput) dom.supabaseUrlInput.value = GET_SUPABASE_URL();
+    if (dom.supabaseKeyInput) dom.supabaseKeyInput.value = GET_SUPABASE_KEY();
+
     const u1Habits = state.settings.u1Habits || DEFAULT_U1_HABITS;
     dom.u1HabitInputs.forEach((inputEl, idx) => {
       inputEl.value = u1Habits[idx] || '';
@@ -1030,6 +1036,13 @@
   async function saveSettingsFromModal() {
     state.settings.u1Name = dom.u1NameInput.value.trim() || 'Adarsh';
     state.settings.u2Name = dom.u2NameInput.value.trim() || 'Sanjana';
+
+    if (dom.supabaseUrlInput && dom.supabaseUrlInput.value.trim()) {
+      localStorage.setItem('75hard_supabase_url', dom.supabaseUrlInput.value.trim());
+    }
+    if (dom.supabaseKeyInput && dom.supabaseKeyInput.value.trim()) {
+      localStorage.setItem('75hard_supabase_key', dom.supabaseKeyInput.value.trim());
+    }
 
     state.settings.u1Habits = dom.u1HabitInputs.map((inputEl, i) => {
       return inputEl.value.trim() || DEFAULT_U1_HABITS[i];
