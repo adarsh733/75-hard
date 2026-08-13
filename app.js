@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   SUPABASE LIVE SYNC + LIGHT/DARK THEME SYSTEM
+   AUTO SENDER IDENTIFICATION + FAB CHAT
    ========================================== */
 
 (function () {
@@ -36,7 +36,8 @@
       u1Habits: [...DEFAULT_U1_HABITS],
       u2Habits: [...DEFAULT_U2_HABITS],
       startDate: formatDateToYYYYMMDD(new Date()),
-      theme: 'dark'
+      theme: 'dark',
+      myUser: 'u1' // 'u1' for Adarsh, 'u2' for Sanjana
     },
     history: {},
     activeDateStr: formatDateToYYYYMMDD(new Date()),
@@ -56,6 +57,10 @@
     saveSettingsBtn: document.getElementById('save-settings-btn'),
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
+
+    // Device User Identity DOM
+    idU1Opt: document.getElementById('id-u1-opt'),
+    idU2Opt: document.getElementById('id-u2-opt'),
 
     // Theme Switcher DOM
     themeToggleBtn: document.getElementById('theme-toggle-btn'),
@@ -79,16 +84,16 @@
     toast: document.getElementById('toast'),
     toastMsg: document.getElementById('toast-msg'),
 
-    // Floating Chat Button & Modal
+    // Floating Action Button & Chat Modal
     floatingChatBtn: document.getElementById('floating-chat-btn'),
     chatUnreadBadge: document.getElementById('chat-unread-badge'),
     chatModal: document.getElementById('chat-modal'),
     closeChatModalBtn: document.getElementById('close-chat-modal-btn'),
+    chatUserIndicator: document.getElementById('chat-user-indicator'),
     chatDatePill: document.getElementById('chat-date-pill'),
     chatContainer: document.getElementById('chat-messages-container'),
     chatEmptyState: document.getElementById('chat-empty-state'),
     chatForm: document.getElementById('chat-form'),
-    chatSenderSelect: document.getElementById('chat-sender-select'),
     chatInput: document.getElementById('chat-input'),
 
     // User 1 (Adarsh)
@@ -121,7 +126,6 @@
     // Send Nudge Modal
     sendNudgeModal: document.getElementById('send-nudge-modal'),
     closeNudgeModalBtn: document.getElementById('close-nudge-modal-btn'),
-    nudgeSenderSelect: document.getElementById('nudge-sender-select'),
     customNudgeText: document.getElementById('custom-nudge-text'),
     submitNudgeBtn: document.getElementById('submit-nudge-btn'),
 
@@ -160,6 +164,8 @@
     loadReadNudges();
 
     applyTheme(state.settings.theme || 'dark');
+    applyIdentity(state.settings.myUser || 'u1');
+
     setupEventListeners();
     await initSupabase();
 
@@ -176,6 +182,7 @@
         if (!state.settings.u1Habits) state.settings.u1Habits = [...DEFAULT_U1_HABITS];
         if (!state.settings.u2Habits) state.settings.u2Habits = [...DEFAULT_U2_HABITS];
         if (!state.settings.theme) state.settings.theme = 'dark';
+        if (!state.settings.myUser) state.settings.myUser = 'u1';
       }
     } catch (e) {
       console.warn('Could not load settings', e);
@@ -197,13 +204,32 @@
     if (themeName === 'light') {
       dom.themeBtnIcon.className = 'fa-solid fa-sun';
       dom.themeToggleBtn.setAttribute('title', 'Switch to Dark Mode');
-      dom.themeLightOpt.classList.add('active');
-      dom.themeDarkOpt.classList.remove('active');
+      if (dom.themeLightOpt) dom.themeLightOpt.classList.add('active');
+      if (dom.themeDarkOpt) dom.themeDarkOpt.classList.remove('active');
     } else {
       dom.themeBtnIcon.className = 'fa-solid fa-moon';
       dom.themeToggleBtn.setAttribute('title', 'Switch to Light Mode');
-      dom.themeDarkOpt.classList.add('active');
-      dom.themeLightOpt.classList.remove('active');
+      if (dom.themeDarkOpt) dom.themeDarkOpt.classList.add('active');
+      if (dom.themeLightOpt) dom.themeLightOpt.classList.remove('active');
+    }
+  }
+
+  function applyIdentity(userKey) {
+    state.settings.myUser = userKey;
+    const u1Name = state.settings.u1Name || 'Adarsh';
+    const u2Name = state.settings.u2Name || 'Sanjana';
+    const activeName = (userKey === 'u1') ? u1Name : u2Name;
+
+    if (dom.chatUserIndicator) {
+      dom.chatUserIndicator.textContent = activeName;
+    }
+
+    if (userKey === 'u1') {
+      if (dom.idU1Opt) dom.idU1Opt.classList.add('active');
+      if (dom.idU2Opt) dom.idU2Opt.classList.remove('active');
+    } else {
+      if (dom.idU2Opt) dom.idU2Opt.classList.add('active');
+      if (dom.idU1Opt) dom.idU1Opt.classList.remove('active');
     }
   }
 
@@ -296,10 +322,13 @@
               checkPendingPopupEncouragement();
 
               if (newChatList.length > prevChatCount && !state.isChatOpen) {
-                state.unreadChatCount += (newChatList.length - prevChatCount);
-                updateUnreadChatBadge();
-                showToast(`💬 New banter message from partner!`);
-                if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                const latestMsg = newChatList[newChatList.length - 1];
+                if (latestMsg && latestMsg.sender !== state.settings.myUser) {
+                  state.unreadChatCount += (newChatList.length - prevChatCount);
+                  updateUnreadChatBadge();
+                  showToast(`💬 New banter from partner!`);
+                  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                }
               }
             }
           })
@@ -612,7 +641,8 @@
     const entry = getDayEntry(state.activeDateStr);
     if (!entry.chat) entry.chat = [];
 
-    const senderKey = dom.chatSenderSelect.value || 'u1';
+    // Automatically use device owner profile! Zero dropdown selection!
+    const senderKey = state.settings.myUser || 'u1';
     const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
     entry.chat.push({
@@ -639,6 +669,8 @@
     const nudge = entry.nudge;
     if (!nudge.id) return;
 
+    // Only show popup if nudge is targeted to me and not read yet
+    if (nudge.sender === state.settings.myUser) return;
     if (state.readNudges.includes(nudge.id)) return;
 
     const u1Name = state.settings.u1Name || 'Adarsh';
@@ -662,10 +694,11 @@
     };
   }
 
-  async function sendEncouragementBoost(senderKey, messageText) {
+  async function sendEncouragementBoost(messageText) {
     const todayStr = formatDateToYYYYMMDD(new Date());
     const entry = getDayEntry(todayStr);
 
+    const senderKey = state.settings.myUser || 'u1';
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
     const senderName = senderKey === 'u1' ? u1Name : u2Name;
@@ -768,6 +801,21 @@
       }
     });
 
+    // Device Owner Identity Switchers
+    if (dom.idU1Opt) {
+      dom.idU1Opt.addEventListener('click', () => {
+        applyIdentity('u1');
+        saveLocalSettings();
+      });
+    }
+
+    if (dom.idU2Opt) {
+      dom.idU2Opt.addEventListener('click', () => {
+        applyIdentity('u2');
+        saveLocalSettings();
+      });
+    }
+
     // Theme Switchers
     dom.themeToggleBtn.addEventListener('click', () => {
       const nextTheme = state.settings.theme === 'dark' ? 'light' : 'dark';
@@ -786,7 +834,7 @@
       saveLocalSettings();
     });
 
-    // FLOATING CHAT BUTTON HANDLER
+    // FLOATING ACTION BUTTON (FAB) CHAT HANDLER
     dom.floatingChatBtn.addEventListener('click', () => {
       state.isChatOpen = true;
       state.unreadChatCount = 0;
@@ -817,10 +865,8 @@
     });
 
     dom.submitNudgeBtn.addEventListener('click', async () => {
-      const senderKey = dom.nudgeSenderSelect.value || 'u1';
-      const text = dom.customNudgeText.value.trim() || 'You got this! Finish today\'s habits! 💪';
-      
-      await sendEncouragementBoost(senderKey, text);
+      const text = dom.customNudgeText.value.trim() || 'Wake up! Finish today\'s 5 habits! ⏰';
+      await sendEncouragementBoost(text);
       dom.sendNudgeModal.classList.add('hidden');
       dom.customNudgeText.value = '';
     });
@@ -877,13 +923,8 @@
 
     dom.startDateInput.value = state.settings.startDate || formatDateToYYYYMMDD(new Date());
 
-    if (state.settings.theme === 'light') {
-      dom.themeLightOpt.classList.add('active');
-      dom.themeDarkOpt.classList.remove('active');
-    } else {
-      dom.themeDarkOpt.classList.add('active');
-      dom.themeLightOpt.classList.remove('active');
-    }
+    applyTheme(state.settings.theme || 'dark');
+    applyIdentity(state.settings.myUser || 'u1');
 
     dom.settingsModal.classList.remove('hidden');
   }
@@ -914,6 +955,12 @@
       applyTheme(selectedTheme);
     }
 
+    const activeIdBtn = document.querySelector('.identity-opt-btn.active');
+    if (activeIdBtn) {
+      const selectedUser = activeIdBtn.getAttribute('data-id-val');
+      applyIdentity(selectedUser);
+    }
+
     saveLocalSettings();
     closeSettingsModal();
 
@@ -929,7 +976,9 @@
       state.settings.u1Habits = [...DEFAULT_U1_HABITS];
       state.settings.u2Habits = [...DEFAULT_U2_HABITS];
       state.settings.theme = 'dark';
+      state.settings.myUser = 'u1';
       applyTheme('dark');
+      applyIdentity('u1');
       saveLocalSettings();
       openSettingsModal();
       renderUI();

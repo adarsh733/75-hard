@@ -50,12 +50,6 @@
           <i class="fa-solid fa-moon" id="theme-btn-icon"></i>
         </button>
 
-        <!-- Floating Chat Button with Notification Badge -->
-        <button id="floating-chat-btn" class="floating-chat-btn" title="Open Banter Chat">
-          <i class="fa-solid fa-comments"></i>
-          <span id="chat-unread-badge" class="chat-badge hidden">0</span>
-        </button>
-
         <button id="open-settings-btn" class="icon-btn" aria-label="Settings">
           <i class="fa-solid fa-gear"></i>
         </button>
@@ -214,12 +208,19 @@
       </div>
     </section>
 
+    <!-- FLOATING ACTION BUTTON (FAB) FOR CHAT (Bottom Right Screen Float) -->
+    <button id="floating-chat-btn" class="fab-chat-btn" title="Open Banter Chat">
+      <i class="fa-solid fa-comments"></i>
+      <span id="chat-unread-badge" class="chat-badge hidden">0</span>
+    </button>
+
     <!-- FLOATING CHAT DRAWER MODAL -->
     <div id="chat-modal" class="modal-overlay hidden">
       <div class="modal-card chat-modal-card">
         <div class="modal-header">
           <div class="chat-header-title">
-            <i class="fa-solid fa-comments"></i> <span>Daily Banter Chat</span>
+            <i class="fa-solid fa-comments"></i> 
+            <span>Banter Chat • <span id="chat-user-indicator">Adarsh</span></span>
           </div>
           <div class="chat-header-right">
             <span class="chat-date-pill" id="chat-date-pill">Today</span>
@@ -230,24 +231,24 @@
           
           <div class="chat-messages-container" id="chat-messages-container">
             <div class="chat-empty-state" id="chat-empty-state">
-              <span>💬 No banter messages for this day yet. Send a quick update or emoji below!</span>
+              <span>💬 No banter messages for this day yet. Pull legs below!</span>
             </div>
           </div>
 
+          <!-- Playful, Leg-Pulling Funny Banter Chips -->
           <div class="quick-emojis-bar">
-            <button class="emoji-chip" data-msg="💧 Drinking water right now!">💧 Water</button>
-            <button class="emoji-chip" data-msg="🏋️ Workout finished! Your turn!">🏋️ Workout</button>
-            <button class="emoji-chip" data-msg="🥗 Eating clean today!">🥗 Clean Diet</button>
-            <button class="emoji-chip" data-msg="📖 Reading done!">📖 Reading</button>
-            <button class="emoji-chip" data-msg="🔥 75 Hard Champions!">🔥 Let's Go!</button>
+            <button class="emoji-chip" data-msg="😏 Still in bed sleeping?">😏 Still sleeping?</button>
+            <button class="emoji-chip" data-msg="🌊 Did you drown in 4L water?">🌊 Drowning in water?</button>
+            <button class="emoji-chip" data-msg="🏋️ Are those 5lb weights heavy?">🏋️ 5lb weights heavy?</button>
+            <button class="emoji-chip" data-msg="📖 Reading or staring at pages?">📖 Staring at book?</button>
+            <button class="emoji-chip" data-msg="🥗 Sneaking cheat snacks on Day 1?">🥗 Sneaking snacks?</button>
+            <button class="emoji-chip" data-msg="🐢 Walking slower than a turtle!">🐢 Slower than a turtle!</button>
+            <button class="emoji-chip" data-msg="🔥 5/5 Done! Try to keep up!">🔥 Try to keep up!</button>
+            <button class="emoji-chip" data-msg="💪 Excuses don't build muscle!">💪 No excuses!</button>
           </div>
 
           <form id="chat-form" class="chat-input-form">
-            <select id="chat-sender-select" class="sender-select" aria-label="Select Sender">
-              <option value="u1">Adarsh</option>
-              <option value="u2">Sanjana</option>
-            </select>
-            <input type="text" id="chat-input" placeholder="Type funny banter..." autocomplete="off">
+            <input type="text" id="chat-input" placeholder="Type funny leg-pulling banter..." autocomplete="off">
             <button type="submit" class="send-chat-btn" aria-label="Send Message">
               <i class="fa-solid fa-paper-plane"></i>
             </button>
@@ -293,20 +294,12 @@
         </div>
         <div class="modal-body">
           <div class="settings-group">
-            <label for="nudge-sender-select">Send As:</label>
-            <select id="nudge-sender-select" class="input-row-select">
-              <option value="u1">Adarsh</option>
-              <option value="u2">Sanjana</option>
-            </select>
-          </div>
-
-          <div class="settings-group">
-            <label>Quick Presets:</label>
+            <label>Quick Leg-Pulling Presets:</label>
             <div class="nudge-presets">
-              <button class="preset-btn" data-text="You got this! Finish today's habits! 💪">💪 Finish Habits</button>
-              <button class="preset-btn" data-text="Don't forget your water intake! 💧">💧 Drink Water</button>
-              <button class="preset-btn" data-text="Time for workout partner! 🏋️">🏋️ Workout Call</button>
-              <button class="preset-btn" data-text="75 Hard Champions! Proud of you! 🌟">🌟 Champions</button>
+              <button class="preset-btn" data-text="Wake up! Finish today's 5 habits! ⏰">⏰ Wake up!</button>
+              <button class="preset-btn" data-text="Don't drown in water intake! 💧">💧 Drink Water!</button>
+              <button class="preset-btn" data-text="Get off the couch and workout! 🏋️">🏋️ Get Off Couch!</button>
+              <button class="preset-btn" data-text="75 Hard Champions! No slacking! 🔥">🔥 No Slacking!</button>
             </div>
           </div>
 
@@ -332,6 +325,20 @@
         </div>
         <div class="modal-body">
           
+          <!-- Device User Profile Selector (Auto-selects sender for chat) -->
+          <div class="settings-group">
+            <h4><i class="fa-solid fa-mobile-screen-button"></i> Device Owner Profile</h4>
+            <p class="help-text">Select whose phone this is so chat automatically sends as you:</p>
+            <div class="theme-segmented-control">
+              <button type="button" class="identity-opt-btn active" id="id-u1-opt" data-id-val="u1">
+                Adarsh's Phone
+              </button>
+              <button type="button" class="identity-opt-btn" id="id-u2-opt" data-id-val="u2">
+                Sanjana's Phone
+              </button>
+            </div>
+          </div>
+
           <!-- Theme Preference Switcher -->
           <div class="settings-group">
             <h4><i class="fa-solid fa-palette"></i> Visual Theme</h4>
