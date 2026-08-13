@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   SUPABASE LIVE SYNC + FLOATING BANTER CHAT
+   SUPABASE LIVE SYNC + LIGHT/DARK THEME SYSTEM
    ========================================== */
 
 (function () {
@@ -35,9 +35,10 @@
       u2Name: 'Sanjana',
       u1Habits: [...DEFAULT_U1_HABITS],
       u2Habits: [...DEFAULT_U2_HABITS],
-      startDate: formatDateToYYYYMMDD(new Date())
+      startDate: formatDateToYYYYMMDD(new Date()),
+      theme: 'dark'
     },
-    history: {}, // Keyed by YYYY-MM-DD: { u1: [bool...], u2: [bool...], chat: [...], nudge: {...} }
+    history: {},
     activeDateStr: formatDateToYYYYMMDD(new Date()),
     supabaseClient: null,
     isOnline: false,
@@ -55,6 +56,12 @@
     saveSettingsBtn: document.getElementById('save-settings-btn'),
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
+
+    // Theme Switcher DOM
+    themeToggleBtn: document.getElementById('theme-toggle-btn'),
+    themeBtnIcon: document.getElementById('theme-btn-icon'),
+    themeDarkOpt: document.getElementById('theme-dark-opt'),
+    themeLightOpt: document.getElementById('theme-light-opt'),
 
     // Day nav
     prevDayBtn: document.getElementById('prev-day-btn'),
@@ -152,6 +159,7 @@
     loadLocalHistory();
     loadReadNudges();
 
+    applyTheme(state.settings.theme || 'dark');
     setupEventListeners();
     await initSupabase();
 
@@ -167,6 +175,7 @@
         state.settings = Object.assign({}, state.settings, parsed);
         if (!state.settings.u1Habits) state.settings.u1Habits = [...DEFAULT_U1_HABITS];
         if (!state.settings.u2Habits) state.settings.u2Habits = [...DEFAULT_U2_HABITS];
+        if (!state.settings.theme) state.settings.theme = 'dark';
       }
     } catch (e) {
       console.warn('Could not load settings', e);
@@ -178,6 +187,23 @@
       localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(state.settings));
     } catch (e) {
       console.warn('Could not save settings', e);
+    }
+  }
+
+  function applyTheme(themeName) {
+    state.settings.theme = themeName;
+    document.body.setAttribute('data-theme', themeName);
+
+    if (themeName === 'light') {
+      dom.themeBtnIcon.className = 'fa-solid fa-sun';
+      dom.themeToggleBtn.setAttribute('title', 'Switch to Dark Mode');
+      dom.themeLightOpt.classList.add('active');
+      dom.themeDarkOpt.classList.remove('active');
+    } else {
+      dom.themeBtnIcon.className = 'fa-solid fa-moon';
+      dom.themeToggleBtn.setAttribute('title', 'Switch to Light Mode');
+      dom.themeDarkOpt.classList.add('active');
+      dom.themeLightOpt.classList.remove('active');
     }
   }
 
@@ -269,7 +295,6 @@
               renderUI();
               checkPendingPopupEncouragement();
 
-              // Trigger unread notification badge if chat modal is closed
               if (newChatList.length > prevChatCount && !state.isChatOpen) {
                 state.unreadChatCount += (newChatList.length - prevChatCount);
                 updateUnreadChatBadge();
@@ -541,7 +566,6 @@
     dom.banterMessage.textContent = msg;
   }
 
-  // RENDER DAILY BANTER CHAT MESSAGES inside Chat Modal Drawer
   function renderBanterChat() {
     const entry = getDayEntry(state.activeDateStr);
     const chatList = entry.chat || [];
@@ -744,6 +768,24 @@
       }
     });
 
+    // Theme Switchers
+    dom.themeToggleBtn.addEventListener('click', () => {
+      const nextTheme = state.settings.theme === 'dark' ? 'light' : 'dark';
+      applyTheme(nextTheme);
+      saveLocalSettings();
+      showToast(`Switched to ${nextTheme === 'dark' ? 'Dark' : 'Light'} Mode`);
+    });
+
+    dom.themeDarkOpt.addEventListener('click', () => {
+      applyTheme('dark');
+      saveLocalSettings();
+    });
+
+    dom.themeLightOpt.addEventListener('click', () => {
+      applyTheme('light');
+      saveLocalSettings();
+    });
+
     // FLOATING CHAT BUTTON HANDLER
     dom.floatingChatBtn.addEventListener('click', () => {
       state.isChatOpen = true;
@@ -835,6 +877,14 @@
 
     dom.startDateInput.value = state.settings.startDate || formatDateToYYYYMMDD(new Date());
 
+    if (state.settings.theme === 'light') {
+      dom.themeLightOpt.classList.add('active');
+      dom.themeDarkOpt.classList.remove('active');
+    } else {
+      dom.themeDarkOpt.classList.add('active');
+      dom.themeLightOpt.classList.remove('active');
+    }
+
     dom.settingsModal.classList.remove('hidden');
   }
 
@@ -858,6 +908,12 @@
       state.settings.startDate = dom.startDateInput.value;
     }
 
+    const activeThemeBtn = document.querySelector('.theme-opt-btn.active');
+    if (activeThemeBtn) {
+      const selectedTheme = activeThemeBtn.getAttribute('data-theme-val');
+      applyTheme(selectedTheme);
+    }
+
     saveLocalSettings();
     closeSettingsModal();
 
@@ -872,6 +928,8 @@
       state.settings.u2Name = 'Sanjana';
       state.settings.u1Habits = [...DEFAULT_U1_HABITS];
       state.settings.u2Habits = [...DEFAULT_U2_HABITS];
+      state.settings.theme = 'dark';
+      applyTheme('dark');
       saveLocalSettings();
       openSettingsModal();
       renderUI();

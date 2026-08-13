@@ -45,6 +45,11 @@
           <i class="fa-solid fa-bolt"></i> <span>Supabase Live</span>
         </div>
 
+        <!-- Quick Theme Switcher Icon Button -->
+        <button id="theme-toggle-btn" class="icon-btn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
+          <i class="fa-solid fa-moon" id="theme-btn-icon"></i>
+        </button>
+
         <!-- Floating Chat Button with Notification Badge -->
         <button id="floating-chat-btn" class="floating-chat-btn" title="Open Banter Chat">
           <i class="fa-solid fa-comments"></i>
@@ -327,6 +332,19 @@
         </div>
         <div class="modal-body">
           
+          <!-- Theme Preference Switcher -->
+          <div class="settings-group">
+            <h4><i class="fa-solid fa-palette"></i> Visual Theme</h4>
+            <div class="theme-segmented-control">
+              <button type="button" class="theme-opt-btn active" id="theme-dark-opt" data-theme-val="dark">
+                <i class="fa-solid fa-moon"></i> Dark Mode
+              </button>
+              <button type="button" class="theme-opt-btn" id="theme-light-opt" data-theme-val="light">
+                <i class="fa-solid fa-sun"></i> Light Mode
+              </button>
+            </div>
+          </div>
+
           <!-- Partner Names -->
           <div class="settings-group">
             <h4><i class="fa-solid fa-users"></i> Partner Names</h4>

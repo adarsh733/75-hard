@@ -1,5 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA VERTICAL UI
+   LIGHT & DARK THEME SUPPORT
    ========================================== */
 
 :root {
@@ -40,6 +41,111 @@
 
   --transition-fast: 0.2s cubic-bezier(0.4, 0, 0.2, 1);
   --transition-normal: 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* ==========================================
+   LIGHT MODE OVERRIDES
+   ========================================== */
+body[data-theme="light"] {
+  --bg-dark: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.88);
+  --bg-card-hover: rgba(255, 255, 255, 0.96);
+  --border-color: rgba(0, 0, 0, 0.08);
+  --border-glow: rgba(0, 0, 0, 0.12);
+
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+
+  --u1-color: #0284c7;
+  --u1-glow: rgba(2, 132, 199, 0.25);
+  --u1-gradient: linear-gradient(135deg, #0284c7 0%, #2563eb 100%);
+  --u1-accent-bg: rgba(2, 132, 199, 0.1);
+
+  --u2-color: #e11d48;
+  --u2-glow: rgba(225, 29, 72, 0.25);
+  --u2-gradient: linear-gradient(135deg, #e11d48 0%, #f43f5e 100%);
+  --u2-accent-bg: rgba(225, 29, 72, 0.1);
+
+  --green-complete: #16a34a;
+  --red-incomplete: #dc2626;
+  --gray-future: rgba(0, 0, 0, 0.05);
+
+  background-color: var(--bg-dark);
+  background-image: 
+    radial-gradient(circle at 50% 0%, rgba(2, 132, 199, 0.08) 0%, transparent 50%),
+    radial-gradient(circle at 50% 100%, rgba(225, 29, 72, 0.08) 0%, transparent 50%);
+}
+
+body[data-theme="light"] .app-header,
+body[data-theme="light"] .day-navigation,
+body[data-theme="light"] .user-card,
+body[data-theme="light"] .matrices-comparison-section,
+body[data-theme="light"] .banter-chat-section,
+body[data-theme="light"] .modal-card {
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.06);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="light"] .brand-text h1 {
+  color: #0f172a;
+}
+
+body[data-theme="light"] .banter-banner {
+  background: linear-gradient(135deg, rgba(241, 245, 249, 0.9), rgba(226, 232, 240, 0.9));
+  border: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+body[data-theme="light"] .habit-item {
+  background: rgba(0, 0, 0, 0.02);
+  border: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+body[data-theme="light"] .habit-item:hover {
+  background: rgba(0, 0, 0, 0.04);
+}
+
+body[data-theme="light"] .habit-item.completed {
+  background: var(--u1-accent-bg);
+}
+
+body[data-theme="light"] #user2-card .habit-item.completed {
+  background: var(--u2-accent-bg);
+}
+
+body[data-theme="light"] .matrix-cell.cell-future {
+  background: rgba(0, 0, 0, 0.04);
+  border-color: rgba(0, 0, 0, 0.06);
+  color: #94a3b8;
+}
+
+body[data-theme="light"] .matrix-cell.cell-green {
+  background: rgba(22, 163, 74, 0.12);
+  border-color: #16a34a;
+  color: #15803d;
+}
+
+body[data-theme="light"] .matrix-cell.cell-red {
+  background: rgba(220, 38, 38, 0.12);
+  border-color: #dc2626;
+  color: #b91c1c;
+}
+
+body[data-theme="light"] .input-row input, 
+body[data-theme="light"] .habit-inputs input,
+body[data-theme="light"] .chat-input-form input {
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  color: #0f172a;
+}
+
+body[data-theme="light"] .modal-card {
+  background: #ffffff;
+}
+
+body[data-theme="light"] .modal-header h3,
+body[data-theme="light"] .user-name {
+  color: #0f172a;
 }
 
 * {
@@ -276,7 +382,7 @@ body {
   font-size: 1.25rem;
   font-weight: 800;
   letter-spacing: 1px;
-  background: linear-gradient(135deg, #fff, var(--text-muted));
+  background: linear-gradient(135deg, var(--text-main), var(--text-muted));
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -497,7 +603,7 @@ body {
   font-family: var(--font-heading);
   font-size: 1.2rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
   line-height: 1.2;
 }
 
@@ -526,6 +632,10 @@ body {
   fill: none;
   stroke: rgba(255, 255, 255, 0.08);
   stroke-width: 5;
+}
+
+body[data-theme="light"] .progress-ring-bg {
+  stroke: rgba(0, 0, 0, 0.08);
 }
 
 .progress-ring-fill {
@@ -646,6 +756,44 @@ body {
   background: var(--u2-gradient);
 }
 
+/* THEME SEGMENTED CONTROL IN SETTINGS */
+.theme-segmented-control {
+  display: flex;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 4px;
+  gap: 4px;
+}
+
+body[data-theme="light"] .theme-segmented-control {
+  background: #e2e8f0;
+  border-color: #cbd5e1;
+}
+
+.theme-opt-btn {
+  flex: 1;
+  padding: 8px 12px;
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  font-weight: 700;
+  font-size: 0.8rem;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: var(--transition-fast);
+}
+
+.theme-opt-btn.active {
+  background: var(--u1-gradient);
+  color: #080a12;
+  box-shadow: 0 2px 8px var(--u1-glow);
+}
+
 /* CHAT MODAL DRAWER STYLING */
 .chat-modal-card {
   max-width: 500px;
@@ -669,7 +817,7 @@ body {
   font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
   display: flex;
   align-items: center;
   gap: 8px;
@@ -743,7 +891,7 @@ body {
   border-radius: 14px;
   font-size: 0.85rem;
   line-height: 1.35;
-  color: #fff;
+  color: var(--text-main);
   position: relative;
 }
 
@@ -781,7 +929,7 @@ body {
 
 .emoji-chip:hover {
   background: rgba(255, 255, 255, 0.12);
-  color: #fff;
+  color: var(--text-main);
 }
 
 .chat-input-form {
@@ -792,7 +940,7 @@ body {
 .sender-select {
   background: rgba(255, 255, 255, 0.06);
   border: 1px solid var(--border-color);
-  color: #fff;
+  color: var(--text-main);
   padding: 8px;
   border-radius: var(--radius-md);
   font-size: 0.78rem;
@@ -806,7 +954,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 8px 12px;
-  color: #fff;
+  color: var(--text-main);
   font-family: var(--font-body);
   font-size: 0.82rem;
   outline: none;
@@ -887,7 +1035,7 @@ body {
 .encouragement-body h3 {
   font-family: var(--font-heading);
   font-size: 1.15rem;
-  color: #fff;
+  color: var(--text-main);
   margin-bottom: 8px;
 }
 
@@ -937,7 +1085,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 8px;
-  color: #fff;
+  color: var(--text-main);
   font-size: 0.85rem;
   outline: none;
   width: 100%;
@@ -1008,7 +1156,7 @@ body {
   font-family: var(--font-heading);
   font-size: 0.95rem;
   font-weight: 700;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .matrix-score-pill {
@@ -1064,7 +1212,7 @@ body {
 
 .matrix-cell.active-day {
   transform: scale(1.1);
-  outline: 2px solid #fff;
+  outline: 2px solid var(--text-main);
   z-index: 2;
 }
 
@@ -1141,7 +1289,7 @@ body {
 .modal-header h3 {
   font-family: var(--font-heading);
   font-size: 1rem;
-  color: #fff;
+  color: var(--text-main);
 }
 
 .close-btn {
@@ -1215,7 +1363,7 @@ body {
   border: 1px solid var(--border-color);
   border-radius: var(--radius-md);
   padding: 8px 10px;
-  color: #fff;
+  color: var(--text-main);
   font-family: var(--font-body);
   font-size: 0.85rem;
   outline: none;
