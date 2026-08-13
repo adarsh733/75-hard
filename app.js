@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   MASTER SECURITY PHONE VERIFICATION LAYER
+   PERSONALIZED SETTINGS PER DEVICE PROFILE
    ========================================== */
 
 (function () {
@@ -47,7 +47,8 @@
     isOnline: false,
     readNudges: [],
     unreadChatCount: 0,
-    isChatOpen: false
+    isChatOpen: false,
+    showPartnerHabitsInSettings: false
   };
 
   // DOM Elements
@@ -67,6 +68,11 @@
     confirmSecurityResetBtn: document.getElementById('confirm-security-reset-btn'),
     securityPhoneInput: document.getElementById('security-phone-input'),
     securityErrorMsg: document.getElementById('security-error-msg'),
+
+    // Settings Habit Groups & Toggle Button
+    u1HabitsSettingsGroup: document.getElementById('u1-habits-settings-group'),
+    u2HabitsSettingsGroup: document.getElementById('u2-habits-settings-group'),
+    togglePartnerHabitsBtn: document.getElementById('toggle-partner-habits-btn'),
 
     // Device User Identity DOM
     idU1Opt: document.getElementById('id-u1-opt'),
@@ -240,6 +246,20 @@
     } else {
       if (dom.idU2Opt) dom.idU2Opt.classList.add('active');
       if (dom.idU1Opt) dom.idU1Opt.classList.remove('active');
+    }
+
+    // DYNAMICALLY TOGGLE SETTINGS HABIT GROUPS BASED ON ACTIVE PROFILE
+    if (!state.showPartnerHabitsInSettings) {
+      if (userKey === 'u1') {
+        if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.remove('hidden');
+        if (dom.u2HabitsSettingsGroup) dom.u2HabitsSettingsGroup.classList.add('hidden');
+      } else {
+        if (dom.u2HabitsSettingsGroup) dom.u2HabitsSettingsGroup.classList.remove('hidden');
+        if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.add('hidden');
+      }
+    } else {
+      if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.remove('hidden');
+      if (dom.u2HabitsSettingsGroup) dom.u2HabitsSettingsGroup.classList.remove('hidden');
     }
   }
 
@@ -762,7 +782,7 @@
     }
 
     dom.u1CompletedCount.textContent = `${u1CompleteCount} / 75 Days Green`;
-    dom.u2CompletedCount.textContent = `${u2CompletedCount} / 75 Days Green`;
+    dom.u2CompletedCount.textContent = `${u2CompleteCount} / 75 Days Green`;
   }
 
   function createMatrixCell(dayNum, dateStr, isDone, isPastOrToday, isSelected) {
@@ -808,6 +828,17 @@
         renderUI();
       }
     });
+
+    // Toggle partner habits view in settings
+    if (dom.togglePartnerHabitsBtn) {
+      dom.togglePartnerHabitsBtn.addEventListener('click', () => {
+        state.showPartnerHabitsInSettings = !state.showPartnerHabitsInSettings;
+        dom.togglePartnerHabitsBtn.innerHTML = state.showPartnerHabitsInSettings 
+          ? '<i class="fa-solid fa-eye-slash"></i> Hide Partner Habits'
+          : '<i class="fa-solid fa-eye"></i> View Partner Habits';
+        applyIdentity(state.settings.myUser || 'u1');
+      });
+    }
 
     // Device Owner Identity Switchers
     if (dom.idU1Opt) {
