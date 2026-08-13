@@ -162,6 +162,42 @@
 
     </main>
 
+    <!-- DAILY FUNNY BANTER CHAT SECTION -->
+    <section class="banter-chat-section">
+      <div class="chat-header">
+        <div class="chat-header-title">
+          <i class="fa-solid fa-comments"></i> <span>Daily Banter & Partner Chat</span>
+        </div>
+        <span class="chat-date-pill" id="chat-date-pill">Today</span>
+      </div>
+
+      <div class="chat-messages-container" id="chat-messages-container">
+        <!-- Messages rendered dynamically -->
+        <div class="chat-empty-state" id="chat-empty-state">
+          <span>💬 No banter messages for this day yet. Send a quick update or emoji below!</span>
+        </div>
+      </div>
+
+      <div class="quick-emojis-bar">
+        <button class="emoji-chip" data-msg="💧 Drinking water right now!">💧 Water</button>
+        <button class="emoji-chip" data-msg="🏋️ Workout finished! Your turn!">🏋️ Workout</button>
+        <button class="emoji-chip" data-msg="🥗 Eating clean today!">🥗 Clean Diet</button>
+        <button class="emoji-chip" data-msg="📖 Reading done!">📖 Reading</button>
+        <button class="emoji-chip" data-msg="🔥 75 Hard Champions!">🔥 Let's Go!</button>
+      </div>
+
+      <form id="chat-form" class="chat-input-form">
+        <select id="chat-sender-select" class="sender-select" aria-label="Select Sender">
+          <option value="u1">Adarsh</option>
+          <option value="u2">Sanjana</option>
+        </select>
+        <input type="text" id="chat-input" placeholder="Type funny banter or daily update..." autocomplete="off">
+        <button type="submit" class="send-chat-btn" aria-label="Send Message">
+          <i class="fa-solid fa-paper-plane"></i>
+        </button>
+      </form>
+    </section>
+
     <!-- INDIVIDUAL 75-DAY MASTER MATRICES (COMPARISON SECTION) -->
     <section class="matrices-comparison-section">
       <div class="matrices-title-block">
@@ -206,6 +242,66 @@
     <div id="toast" class="toast hidden">
       <i class="fa-solid fa-circle-info" id="toast-icon"></i>
       <span id="toast-msg">Nudge sent!</span>
+    </div>
+
+    <!-- ENCOURAGEMENT POPUP OVERLAY (Triggered when phone opened) -->
+    <div id="encouragement-popup" class="modal-overlay hidden">
+      <div class="modal-card encouragement-card">
+        <div class="encouragement-header">
+          <div class="encouragement-avatar-ring">
+            <img id="enc-sender-dp" src="adarsh.jpg" alt="Sender DP">
+          </div>
+          <div class="enc-badge">❤️ ENCOURAGEMENT BOOST</div>
+        </div>
+        <div class="encouragement-body">
+          <h3 id="enc-title">Adarsh sent you a boost!</h3>
+          <p id="enc-message" class="enc-quote">"You got this Sanjana! Finish today's 5 habits!"</p>
+        </div>
+        <div class="encouragement-footer">
+          <button id="enc-dismiss-btn" class="btn btn-primary btn-full">
+            ❤️ Thanks! Let's Crush It!
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ENCOURAGEMENT SEND MODAL -->
+    <div id="send-nudge-modal" class="modal-overlay hidden">
+      <div class="modal-card">
+        <div class="modal-header">
+          <h3><i class="fa-solid fa-heart"></i> Send Encouragement Boost</h3>
+          <button id="close-nudge-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <div class="settings-group">
+            <label for="nudge-sender-select">Send As:</label>
+            <select id="nudge-sender-select" class="input-row-select">
+              <option value="u1">Adarsh</option>
+              <option value="u2">Sanjana</option>
+            </select>
+          </div>
+
+          <div class="settings-group">
+            <label>Quick Presets:</label>
+            <div class="nudge-presets">
+              <button class="preset-btn" data-text="You got this! Finish today's habits! 💪">💪 Finish Habits</button>
+              <button class="preset-btn" data-text="Don't forget your water intake! 💧">💧 Drink Water</button>
+              <button class="preset-btn" data-text="Time for workout partner! 🏋️">🏋️ Workout Call</button>
+              <button class="preset-btn" data-text="75 Hard Champions! Proud of you! 🌟">🌟 Champions</button>
+            </div>
+          </div>
+
+          <div class="settings-group">
+            <label for="custom-nudge-text">Or Custom Message:</label>
+            <input type="text" id="custom-nudge-text" placeholder="Type custom message...">
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="submit-nudge-btn" class="btn btn-primary btn-full">
+            <i class="fa-solid fa-paper-plane"></i> Send Popup Boost
+          </button>
+        </div>
+      </div>
     </div>
 
     <!-- Settings Modal -->

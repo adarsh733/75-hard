@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   SUPABASE LIVE SYNC INTEGRATION
+   SUPABASE LIVE SYNC + BANTER CHAT + POPUP BOOST
    ========================================== */
 
 (function () {
@@ -22,12 +22,12 @@
     "🥗 Clean Diet & No Sugar"
   ];
 
-  // Hardcoded Supabase credentials for seamless silent sync
   const DEFAULT_SUPABASE_URL = 'https://jamsrlijvqypdxucvhox.supabase.co';
   const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphbXNybGlqdnF5cGR4dWN2aG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDczOTksImV4cCI6MjEwMjA4MzM5OX0.iInG76ebAetpdWrOefmqSlvpTeBqxt0z_RW_OUx6Ah4';
 
   const STORAGE_KEY_SETTINGS = '75hard_duo_settings';
   const STORAGE_KEY_DATA = '75hard_duo_history_data';
+  const STORAGE_KEY_READ_NUDGES = '75hard_duo_read_nudges';
 
   let state = {
     settings: {
@@ -37,10 +37,11 @@
       u2Habits: [...DEFAULT_U2_HABITS],
       startDate: formatDateToYYYYMMDD(new Date())
     },
-    history: {}, // Keyed by YYYY-MM-DD: { u1: [bool...], u2: [bool...] }
+    history: {}, // Keyed by YYYY-MM-DD: { u1: [bool...], u2: [bool...], chat: [...], nudge: {...} }
     activeDateStr: formatDateToYYYYMMDD(new Date()),
     supabaseClient: null,
-    isOnline: false
+    isOnline: false,
+    readNudges: []
   };
 
   // DOM Elements
@@ -89,6 +90,28 @@
     u2HabitsContainer: document.getElementById('u2-habits-container'),
     u2BarFill: document.getElementById('u2-bar-fill'),
 
+    // Chat elements
+    chatDatePill: document.getElementById('chat-date-pill'),
+    chatContainer: document.getElementById('chat-messages-container'),
+    chatEmptyState: document.getElementById('chat-empty-state'),
+    chatForm: document.getElementById('chat-form'),
+    chatSenderSelect: document.getElementById('chat-sender-select'),
+    chatInput: document.getElementById('chat-input'),
+
+    // Popup Encouragement Modal
+    encouragementPopup: document.getElementById('encouragement-popup'),
+    encSenderDp: document.getElementById('enc-sender-dp'),
+    encTitle: document.getElementById('enc-title'),
+    encMessage: document.getElementById('enc-message'),
+    encDismissBtn: document.getElementById('enc-dismiss-btn'),
+
+    // Send Nudge Modal
+    sendNudgeModal: document.getElementById('send-nudge-modal'),
+    closeNudgeModalBtn: document.getElementById('close-nudge-modal-btn'),
+    nudgeSenderSelect: document.getElementById('nudge-sender-select'),
+    customNudgeText: document.getElementById('custom-nudge-text'),
+    submitNudgeBtn: document.getElementById('submit-nudge-btn'),
+
     // Individual Matrices
     u1MatrixName: document.getElementById('u1-matrix-name'),
     u1CompletedCount: document.getElementById('u1-completed-count'),
@@ -121,11 +144,13 @@
   async function init() {
     loadLocalSettings();
     loadLocalHistory();
+    loadReadNudges();
 
     setupEventListeners();
     await initSupabase();
 
     renderUI();
+    checkPendingPopupEncouragement();
   }
 
   function loadLocalSettings() {
@@ -169,6 +194,23 @@
     }
   }
 
+  function loadReadNudges() {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEY_READ_NUDGES);
+      if (saved) {
+        state.readNudges = JSON.parse(saved);
+      }
+    } catch (e) {
+      state.readNudges = [];
+    }
+  }
+
+  function saveReadNudges() {
+    try {
+      localStorage.setItem(STORAGE_KEY_READ_NUDGES, JSON.stringify(state.readNudges));
+    } catch (e) {}
+  }
+
   // SUPABASE REALTIME INITIALIZATION & SYNC
   async function initSupabase() {
     if (window.supabase) {
@@ -177,32 +219,44 @@
         state.isOnline = true;
         updateSyncStatusBadge(true);
 
-        // Initial fetch from Supabase
+        // Initial fetch
         const { data, error } = await state.supabaseClient.from('habit_history').select('*');
         if (data && Array.isArray(data)) {
           data.forEach(row => {
             if (row.date) {
+              const u1Payload = unpackPayload(row.u1_ticks);
+              const u2Payload = unpackPayload(row.u2_ticks);
+
               state.history[row.date] = {
-                u1: row.u1_ticks || [false, false, false, false, false],
-                u2: row.u2_ticks || [false, false, false, false, false]
+                u1: u1Payload.ticks,
+                u2: u2Payload.ticks,
+                chat: u1Payload.chat || u2Payload.chat || [],
+                nudge: u1Payload.nudge || u2Payload.nudge || null
               };
             }
           });
           saveLocalHistory();
           renderUI();
+          checkPendingPopupEncouragement();
         }
 
-        // Subscribe to live Postgres changes across devices
+        // Subscribe to live Postgres changes
         state.supabaseClient
           .channel('realtime:habit_history')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_history' }, (payload) => {
             if (payload.new && payload.new.date) {
+              const u1Payload = unpackPayload(payload.new.u1_ticks);
+              const u2Payload = unpackPayload(payload.new.u2_ticks);
+
               state.history[payload.new.date] = {
-                u1: payload.new.u1_ticks || [false, false, false, false, false],
-                u2: payload.new.u2_ticks || [false, false, false, false, false]
+                u1: u1Payload.ticks,
+                u2: u2Payload.ticks,
+                chat: u1Payload.chat || u2Payload.chat || [],
+                nudge: u1Payload.nudge || u2Payload.nudge || null
               };
               saveLocalHistory();
               renderUI();
+              checkPendingPopupEncouragement();
             }
           })
           .subscribe();
@@ -214,6 +268,19 @@
     } else {
       updateSyncStatusBadge(false);
     }
+  }
+
+  function unpackPayload(val) {
+    if (Array.isArray(val)) {
+      return { ticks: val, chat: [], nudge: null };
+    } else if (val && typeof val === 'object') {
+      return {
+        ticks: val.ticks || [false, false, false, false, false],
+        chat: val.chat || [],
+        nudge: val.nudge || null
+      };
+    }
+    return { ticks: [false, false, false, false, false], chat: [], nudge: null };
   }
 
   function updateSyncStatusBadge(online) {
@@ -255,7 +322,9 @@
     if (!state.history[dateStr]) {
       state.history[dateStr] = {
         u1: [false, false, false, false, false],
-        u2: [false, false, false, false, false]
+        u2: [false, false, false, false, false],
+        chat: [],
+        nudge: null
       };
     }
     return state.history[dateStr];
@@ -265,6 +334,7 @@
     renderHeaderAndNav();
     renderUserCards();
     renderBanterBanner();
+    renderBanterChat();
     renderIndividualMatrices();
   }
 
@@ -308,7 +378,6 @@
       if (entry && entry[userKey] && entry[userKey].every(Boolean)) {
         streak++;
       } else if (i === 0) {
-        // Keep streak if today isn't over yet
       } else {
         break;
       }
@@ -360,17 +429,34 @@
       navigator.vibrate(25);
     }
 
-    if (state.supabaseClient) {
-      try {
-        await state.supabaseClient.from('habit_history').upsert({
-          date: state.activeDateStr,
-          u1_ticks: entry.u1,
-          u2_ticks: entry.u2,
-          updated_at: new Date().toISOString()
-        });
-      } catch (e) {
-        console.error('Supabase Upsert Error:', e);
-      }
+    await syncRowToSupabase(state.activeDateStr);
+  }
+
+  async function syncRowToSupabase(dateStr) {
+    if (!state.supabaseClient) return;
+    const entry = getDayEntry(dateStr);
+
+    const u1Payload = {
+      ticks: entry.u1,
+      chat: entry.chat || [],
+      nudge: entry.nudge || null
+    };
+
+    const u2Payload = {
+      ticks: entry.u2,
+      chat: entry.chat || [],
+      nudge: entry.nudge || null
+    };
+
+    try {
+      await state.supabaseClient.from('habit_history').upsert({
+        date: dateStr,
+        u1_ticks: u1Payload,
+        u2_ticks: u2Payload,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error('Supabase Sync Error:', e);
     }
   }
 
@@ -425,6 +511,132 @@
     dom.banterIcon.textContent = icon;
     dom.banterTitle.textContent = title;
     dom.banterMessage.textContent = msg;
+  }
+
+  // RENDER DAILY BANTER CHAT MESSAGES
+  function renderBanterChat() {
+    const entry = getDayEntry(state.activeDateStr);
+    const chatList = entry.chat || [];
+
+    const dObj = parseYYYYMMDD(state.activeDateStr);
+    dom.chatDatePill.textContent = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+
+    dom.chatContainer.innerHTML = '';
+
+    if (chatList.length === 0) {
+      dom.chatContainer.appendChild(dom.chatEmptyState);
+      return;
+    }
+
+    const u1Name = state.settings.u1Name || 'Adarsh';
+    const u2Name = state.settings.u2Name || 'Sanjana';
+
+    chatList.forEach(msg => {
+      const isU1 = msg.sender === 'u1' || msg.sender === u1Name;
+      const senderDisplayName = isU1 ? u1Name : u2Name;
+
+      const wrapEl = document.createElement('div');
+      wrapEl.className = `chat-bubble-wrap ${isU1 ? 'u1-msg' : 'u2-msg'}`;
+
+      wrapEl.innerHTML = `
+        <div class="chat-meta">
+          <span>${escapeHtml(senderDisplayName)}</span>
+          <span class="chat-time">• ${escapeHtml(msg.time || '')}</span>
+        </div>
+        <div class="chat-bubble">
+          <span class="chat-text">${escapeHtml(msg.text)}</span>
+        </div>
+      `;
+
+      dom.chatContainer.appendChild(wrapEl);
+    });
+
+    // Auto scroll chat to bottom
+    dom.chatContainer.scrollTop = dom.chatContainer.scrollHeight;
+  }
+
+  async function postBanterMessage(text) {
+    if (!text.trim()) return;
+
+    const entry = getDayEntry(state.activeDateStr);
+    if (!entry.chat) entry.chat = [];
+
+    const senderKey = dom.chatSenderSelect.value || 'u1';
+    const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+
+    entry.chat.push({
+      id: Date.now(),
+      sender: senderKey,
+      text: text.trim(),
+      time: nowStr
+    });
+
+    saveLocalHistory();
+    renderBanterChat();
+
+    dom.chatInput.value = '';
+
+    await syncRowToSupabase(state.activeDateStr);
+  }
+
+  // CHECK AND SHOW POPUP ENCOURAGEMENT WHEN PHONE OPENED
+  function checkPendingPopupEncouragement() {
+    const todayStr = formatDateToYYYYMMDD(new Date());
+    const entry = getDayEntry(todayStr);
+
+    if (!entry.nudge) return;
+
+    const nudge = entry.nudge;
+    if (!nudge.id) return;
+
+    // Check if already dismissed locally on this device
+    if (state.readNudges.includes(nudge.id)) return;
+
+    // Show Popup Encouragement Modal
+    const u1Name = state.settings.u1Name || 'Adarsh';
+    const u2Name = state.settings.u2Name || 'Sanjana';
+
+    const isFromU1 = nudge.sender === 'u1' || nudge.sender === u1Name;
+    const senderName = isFromU1 ? u1Name : u2Name;
+    const senderDp = isFromU1 ? 'adarsh.jpg' : 'sanjana.jpg';
+
+    dom.encSenderDp.src = senderDp;
+    dom.encTitle.textContent = `${senderName} sent you a boost!`;
+    dom.encMessage.textContent = `"${nudge.text}"`;
+
+    dom.encouragementPopup.classList.remove('hidden');
+
+    // Store nudge ID on dismiss
+    dom.encDismissBtn.onclick = () => {
+      state.readNudges.push(nudge.id);
+      saveReadNudges();
+      dom.encouragementPopup.classList.add('hidden');
+      showToast(`❤️ Boost acknowledged!`);
+    };
+  }
+
+  async function sendEncouragementBoost(senderKey, messageText) {
+    const todayStr = formatDateToYYYYMMDD(new Date());
+    const entry = getDayEntry(todayStr);
+
+    const u1Name = state.settings.u1Name || 'Adarsh';
+    const u2Name = state.settings.u2Name || 'Sanjana';
+    const senderName = senderKey === 'u1' ? u1Name : u2Name;
+
+    const nudgeObj = {
+      id: 'nudge_' + Date.now(),
+      sender: senderKey,
+      senderName: senderName,
+      text: messageText,
+      timestamp: Date.now()
+    };
+
+    entry.nudge = nudgeObj;
+
+    saveLocalHistory();
+    await syncRowToSupabase(todayStr);
+
+    showToast(`❤️ Boost sent to ${senderKey === 'u1' ? u2Name : u1Name}!`);
   }
 
   function renderIndividualMatrices() {
@@ -509,7 +721,45 @@
       }
     });
 
-    dom.nudgeBtn.addEventListener('click', sendNudge);
+    // Encouragement Nudge button opens Send Nudge Modal
+    dom.nudgeBtn.addEventListener('click', () => {
+      dom.sendNudgeModal.classList.remove('hidden');
+    });
+
+    dom.closeNudgeModalBtn.addEventListener('click', () => {
+      dom.sendNudgeModal.classList.add('hidden');
+    });
+
+    // Preset nudge buttons
+    document.querySelectorAll('.preset-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const text = btn.getAttribute('data-text');
+        dom.customNudgeText.value = text;
+      });
+    });
+
+    dom.submitNudgeBtn.addEventListener('click', async () => {
+      const senderKey = dom.nudgeSenderSelect.value || 'u1';
+      const text = dom.customNudgeText.value.trim() || 'You got this! Finish today\'s habits! 💪';
+      
+      await sendEncouragementBoost(senderKey, text);
+      dom.sendNudgeModal.classList.add('hidden');
+      dom.customNudgeText.value = '';
+    });
+
+    // Banter Chat form submit
+    dom.chatForm.addEventListener('submit', (e) => {
+      e.preventDefault();
+      postBanterMessage(dom.chatInput.value);
+    });
+
+    // Quick emoji chips
+    document.querySelectorAll('.emoji-chip').forEach(chip => {
+      chip.addEventListener('click', () => {
+        const text = chip.getAttribute('data-msg');
+        postBanterMessage(text);
+      });
+    });
 
     dom.openSettingsBtn.addEventListener('click', openSettingsModal);
     dom.syncStatus.addEventListener('click', openSettingsModal);
@@ -522,15 +772,6 @@
     dom.resetDefaultsBtn.addEventListener('click', resetDefaultSettings);
     if (dom.resetSupabaseBtn) {
       dom.resetSupabaseBtn.addEventListener('click', resetSupabaseTableData);
-    }
-  }
-
-  function sendNudge() {
-    const sender = state.settings.u1Name || 'Partner';
-    showToast(`❤️ Encouragement sent to your partner!`);
-
-    if (navigator.vibrate) {
-      navigator.vibrate([80, 40, 80]);
     }
   }
 
@@ -602,7 +843,6 @@
     }
   }
 
-  // RESET ALL SUPABASE TABLE DATA FOR A CLEAN DAY 1 START
   async function resetSupabaseTableData() {
     if (confirm("Are you sure you want to RESET all 75 Hard table data in Supabase? This will clear all test entries so you and Sanjana can start Day 1 clean!")) {
       try {
