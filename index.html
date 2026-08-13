@@ -264,6 +264,32 @@
       <span id="toast-msg">Nudge sent!</span>
     </div>
 
+    <!-- SECURITY VERIFICATION MODAL FOR DATA RESET -->
+    <div id="security-modal" class="modal-overlay hidden">
+      <div class="modal-card security-modal-card">
+        <div class="modal-header security-header">
+          <h3><i class="fa-solid fa-shield-halved"></i> Master Security Verification</h3>
+          <button id="close-security-modal-btn" class="close-btn">&times;</button>
+        </div>
+        <div class="modal-body">
+          <p class="security-warning-text">
+            ⚠️ <strong>CRITICAL:</strong> This will permanently erase all 75 Hard habit data and chat history from Supabase.
+          </p>
+          <div class="settings-group">
+            <label for="security-phone-input">Enter Master Phone Number to Authorize:</label>
+            <input type="tel" id="security-phone-input" placeholder="Enter phone number..." autocomplete="off">
+            <span id="security-error-msg" class="security-error-msg hidden">❌ Incorrect phone number. Authorization denied!</span>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button id="cancel-security-btn" class="btn btn-secondary">Cancel</button>
+          <button id="confirm-security-reset-btn" class="btn btn-danger">
+            <i class="fa-solid fa-lock-open"></i> Authorize & Reset Data
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- ENCOURAGEMENT POPUP OVERLAY (Triggered when phone opened) -->
     <div id="encouragement-popup" class="modal-overlay hidden">
       <div class="modal-card encouragement-card">
@@ -384,7 +410,6 @@
               <input type="text" id="u2-habit-0" placeholder="Habit 1">
               <input type="text" id="u2-habit-1" placeholder="Habit 2">
               <input type="text" id="u2-habit-2" placeholder="Habit 3">
-              <input type="text" id="u2-habit-3" placeholder="Habit 4">
               <input type="text" id="u2-habit-4" placeholder="Habit 5">
             </div>
           </div>
@@ -398,12 +423,12 @@
             </div>
           </div>
 
-          <!-- Reset Supabase Data Action -->
+          <!-- Reset Supabase Data Action (Secured with master phone verification) -->
           <div class="settings-group reset-zone">
-            <h4><i class="fa-solid fa-triangle-exclamation"></i> Reset History</h4>
-            <p class="help-text">Reset all test data in Supabase table so you can start Day 1 fresh:</p>
+            <h4><i class="fa-solid fa-shield-halved"></i> Master Security Reset</h4>
+            <p class="help-text">Requires master phone verification (9479918338) to reset Supabase table:</p>
             <button id="reset-supabase-btn" class="btn btn-danger">
-              <i class="fa-solid fa-trash-can"></i> Reset Table Data
+              <i class="fa-solid fa-lock"></i> Secure Table Reset
             </button>
           </div>
 

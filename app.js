@@ -1,10 +1,12 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   AUTO SENDER IDENTIFICATION + FAB CHAT
+   MASTER SECURITY PHONE VERIFICATION LAYER
    ========================================== */
 
 (function () {
   'use strict';
+
+  const MASTER_SECURITY_PHONE = '9479918338';
 
   const DEFAULT_U1_HABITS = [
     "💧 Drink 4L Water",
@@ -37,7 +39,7 @@
       u2Habits: [...DEFAULT_U2_HABITS],
       startDate: formatDateToYYYYMMDD(new Date()),
       theme: 'dark',
-      myUser: 'u1' // 'u1' for Adarsh, 'u2' for Sanjana
+      myUser: 'u1'
     },
     history: {},
     activeDateStr: formatDateToYYYYMMDD(new Date()),
@@ -57,6 +59,14 @@
     saveSettingsBtn: document.getElementById('save-settings-btn'),
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
+
+    // Security Verification Modal DOM
+    securityModal: document.getElementById('security-modal'),
+    closeSecurityModalBtn: document.getElementById('close-security-modal-btn'),
+    cancelSecurityBtn: document.getElementById('cancel-security-btn'),
+    confirmSecurityResetBtn: document.getElementById('confirm-security-reset-btn'),
+    securityPhoneInput: document.getElementById('security-phone-input'),
+    securityErrorMsg: document.getElementById('security-error-msg'),
 
     // Device User Identity DOM
     idU1Opt: document.getElementById('id-u1-opt'),
@@ -641,7 +651,6 @@
     const entry = getDayEntry(state.activeDateStr);
     if (!entry.chat) entry.chat = [];
 
-    // Automatically use device owner profile! Zero dropdown selection!
     const senderKey = state.settings.myUser || 'u1';
     const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
@@ -669,7 +678,6 @@
     const nudge = entry.nudge;
     if (!nudge.id) return;
 
-    // Only show popup if nudge is targeted to me and not read yet
     if (nudge.sender === state.settings.myUser) return;
     if (state.readNudges.includes(nudge.id)) return;
 
@@ -754,7 +762,7 @@
     }
 
     dom.u1CompletedCount.textContent = `${u1CompleteCount} / 75 Days Green`;
-    dom.u2CompletedCount.textContent = `${u2CompleteCount} / 75 Days Green`;
+    dom.u2CompletedCount.textContent = `${u2CompletedCount} / 75 Days Green`;
   }
 
   function createMatrixCell(dayNum, dateStr, isDone, isPastOrToday, isSelected) {
@@ -894,7 +902,53 @@
     dom.saveSettingsBtn.addEventListener('click', saveSettingsFromModal);
     dom.resetDefaultsBtn.addEventListener('click', resetDefaultSettings);
     if (dom.resetSupabaseBtn) {
-      dom.resetSupabaseBtn.addEventListener('click', resetSupabaseTableData);
+      dom.resetSupabaseBtn.addEventListener('click', openSecurityModal);
+    }
+
+    // Security Reset Verification Handlers
+    if (dom.closeSecurityModalBtn) {
+      dom.closeSecurityModalBtn.addEventListener('click', closeSecurityModal);
+    }
+    if (dom.cancelSecurityBtn) {
+      dom.cancelSecurityBtn.addEventListener('click', closeSecurityModal);
+    }
+    if (dom.confirmSecurityResetBtn) {
+      dom.confirmSecurityResetBtn.addEventListener('click', confirmSecurityReset);
+    }
+  }
+
+  function openSecurityModal() {
+    if (dom.securityPhoneInput) dom.securityPhoneInput.value = '';
+    if (dom.securityErrorMsg) dom.securityErrorMsg.classList.add('hidden');
+    if (dom.securityModal) dom.securityModal.classList.remove('hidden');
+  }
+
+  function closeSecurityModal() {
+    if (dom.securityModal) dom.securityModal.classList.add('hidden');
+  }
+
+  async function confirmSecurityReset() {
+    const rawVal = dom.securityPhoneInput ? dom.securityPhoneInput.value : '';
+    const cleanDigits = rawVal.replace(/\D/g, '');
+
+    if (cleanDigits === MASTER_SECURITY_PHONE) {
+      try {
+        state.history = {};
+        saveLocalHistory();
+        if (state.supabaseClient) {
+          await state.supabaseClient.from('habit_history').delete().neq('date', '1970-01-01');
+        }
+        renderUI();
+        closeSecurityModal();
+        closeSettingsModal();
+        showToast("🗑️ Master phone verified! Supabase table reset!");
+      } catch (err) {
+        console.error('Reset Supabase Error:', err);
+        showToast("Error resetting Supabase table");
+      }
+    } else {
+      if (dom.securityErrorMsg) dom.securityErrorMsg.classList.remove('hidden');
+      if (navigator.vibrate) navigator.vibrate([150, 80, 150]);
     }
   }
 
@@ -982,23 +1036,6 @@
       saveLocalSettings();
       openSettingsModal();
       renderUI();
-    }
-  }
-
-  async function resetSupabaseTableData() {
-    if (confirm("Are you sure you want to RESET all 75 Hard table data in Supabase? This will clear all test entries so you and Sanjana can start Day 1 clean!")) {
-      try {
-        state.history = {};
-        saveLocalHistory();
-        if (state.supabaseClient) {
-          await state.supabaseClient.from('habit_history').delete().neq('date', '1970-01-01');
-        }
-        renderUI();
-        showToast("🗑️ Supabase table reset! Ready for Day 1!");
-      } catch (err) {
-        console.error('Reset Supabase Error:', err);
-        showToast("Error resetting Supabase table");
-      }
     }
   }
 

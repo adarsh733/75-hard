@@ -131,7 +131,8 @@ body[data-theme="light"] .matrix-cell.cell-red {
 
 body[data-theme="light"] .input-row input, 
 body[data-theme="light"] .habit-inputs input,
-body[data-theme="light"] .chat-input-form input {
+body[data-theme="light"] .chat-input-form input,
+body[data-theme="light"] #security-phone-input {
   background: #ffffff;
   border: 1px solid #cbd5e1;
   color: #0f172a;
@@ -793,6 +794,38 @@ body[data-theme="light"] .theme-segmented-control {
   background: var(--u1-gradient);
   color: #080a12;
   box-shadow: 0 2px 8px var(--u1-glow);
+}
+
+/* SECURITY MODAL STYLING */
+.security-modal-card {
+  border: 2px solid #ff3b30;
+  box-shadow: 0 0 35px rgba(255, 59, 48, 0.35);
+}
+
+.security-header {
+  border-bottom-color: rgba(255, 59, 48, 0.2);
+}
+
+.security-header h3 {
+  color: #ff5252;
+}
+
+.security-warning-text {
+  font-size: 0.84rem;
+  color: #ff6b6b;
+  background: rgba(255, 59, 48, 0.1);
+  padding: 10px 12px;
+  border-radius: var(--radius-md);
+  border-left: 3px solid #ff3b30;
+  line-height: 1.4;
+}
+
+.security-error-msg {
+  font-size: 0.78rem;
+  color: #ff5252;
+  font-weight: 700;
+  margin-top: 4px;
+  display: block;
 }
 
 /* CHAT MODAL DRAWER STYLING */
