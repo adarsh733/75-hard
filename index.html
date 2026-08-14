@@ -26,7 +26,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <!-- Runtime Netlify Config Injection -->
-  <script src="config.js" onerror="console.warn('config.js not found, falling back to localStorage/Settings credentials')"></script>
+  <script src="config.js" onerror="console.warn('config.js not found, using default Supabase credentials')"></script>
 </head>
 <body>
   <div class="app-container">
@@ -79,12 +79,14 @@
       </button>
     </section>
 
-    <!-- Partner Motivation & Support Banner -->
+    <!-- Clean Progress Counter Banner -->
     <section class="banter-banner" id="banter-banner">
-      <div class="banter-icon" id="banter-icon">🤝</div>
+      <div class="banter-icon" id="banter-icon">⚡</div>
       <div class="banter-content">
-        <div class="banter-title" id="banter-title">Daily Partner Progress</div>
-        <div class="banter-message" id="banter-message">Let's support each other and complete all 5 habits today!</div>
+        <div class="banter-message" id="banter-message">
+          <div class="progress-line">Adarsh - 0/5</div>
+          <div class="progress-line">Sanjana - 0/5</div>
+        </div>
       </div>
       <button id="nudge-btn" class="nudge-btn" title="Send a supportive nudge!">
         <i class="fa-solid fa-heart"></i> Encourage
@@ -365,20 +367,6 @@
               <button type="button" class="identity-opt-btn" id="id-u2-opt" data-id-val="u2">
                 Sanjana's Phone
               </button>
-            </div>
-          </div>
-
-          <!-- SUPABASE LIVE SYNC CONFIGURATION (SETTINGS FALLBACK) -->
-          <div class="settings-group">
-            <h4><i class="fa-solid fa-bolt"></i> Supabase Live Sync Connection</h4>
-            <p class="help-text">Inject from Netlify env OR enter credentials below:</p>
-            <div class="input-row">
-              <label for="supabase-url-input">Supabase Project URL:</label>
-              <input type="url" id="supabase-url-input" placeholder="https://xyz.supabase.co">
-            </div>
-            <div class="input-row">
-              <label for="supabase-key-input">Supabase Anon Key:</label>
-              <input type="password" id="supabase-key-input" placeholder="eyJhbGciOi...">
             </div>
           </div>
 

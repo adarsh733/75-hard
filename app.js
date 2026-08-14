@@ -1,12 +1,15 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   DYNAMIC SUPABASE RUNTIME & SETTINGS CONNECTION
+   AUTOMATIC SUPABASE SYNC (SETTINGS UI CLEANUP)
    ========================================== */
 
 (function () {
   'use strict';
 
   const MASTER_SECURITY_PHONE = '9479918338';
+
+  const DEFAULT_SUPABASE_URL = 'https://jamsrlijvqypdxucvhox.supabase.co';
+  const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphbXNybGlqdnF5cGR4dWN2aG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDczOTksImV4cCI6MjEwMjA4MzM5OX0.iInG76ebAetpdWrOefmqSlvpTeBqxt0z_RW_OUx6Ah4';
 
   const DEFAULT_U1_HABITS = [
     "💧 Drink 4L Water",
@@ -24,8 +27,8 @@
     "🥗 Clean Diet & No Sugar"
   ];
 
-  const GET_SUPABASE_URL = () => (window.SUPABASE_URL && window.SUPABASE_URL.trim()) ? window.SUPABASE_URL.trim() : (localStorage.getItem('75hard_supabase_url') || '');
-  const GET_SUPABASE_KEY = () => (window.SUPABASE_KEY && window.SUPABASE_KEY.trim()) ? window.SUPABASE_KEY.trim() : (localStorage.getItem('75hard_supabase_key') || '');
+  const GET_SUPABASE_URL = () => (window.SUPABASE_URL && window.SUPABASE_URL.trim()) ? window.SUPABASE_URL.trim() : (localStorage.getItem('75hard_supabase_url') || DEFAULT_SUPABASE_URL);
+  const GET_SUPABASE_KEY = () => (window.SUPABASE_KEY && window.SUPABASE_KEY.trim()) ? window.SUPABASE_KEY.trim() : (localStorage.getItem('75hard_supabase_key') || DEFAULT_SUPABASE_KEY);
 
   const STORAGE_KEY_SETTINGS = '75hard_duo_settings';
   const STORAGE_KEY_DATA = '75hard_duo_history_data';
@@ -61,10 +64,6 @@
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
 
-    // Supabase Inputs in Settings
-    supabaseUrlInput: document.getElementById('supabase-url-input'),
-    supabaseKeyInput: document.getElementById('supabase-key-input'),
-
     // Security Verification Modal DOM
     securityModal: document.getElementById('security-modal'),
     closeSecurityModalBtn: document.getElementById('close-security-modal-btn'),
@@ -98,7 +97,6 @@
     // Banter & toast
     banterBanner: document.getElementById('banter-banner'),
     banterIcon: document.getElementById('banter-icon'),
-    banterTitle: document.getElementById('banter-title'),
     banterMessage: document.getElementById('banter-message'),
     nudgeBtn: document.getElementById('nudge-btn'),
     toast: document.getElementById('toast'),
@@ -222,13 +220,13 @@
     document.body.setAttribute('data-theme', themeName);
 
     if (themeName === 'light') {
-      dom.themeBtnIcon.className = 'fa-solid fa-sun';
-      dom.themeToggleBtn.setAttribute('title', 'Switch to Dark Mode');
+      if (dom.themeBtnIcon) dom.themeBtnIcon.className = 'fa-solid fa-sun';
+      if (dom.themeToggleBtn) dom.themeToggleBtn.setAttribute('title', 'Switch to Dark Mode');
       if (dom.themeLightOpt) dom.themeLightOpt.classList.add('active');
       if (dom.themeDarkOpt) dom.themeDarkOpt.classList.remove('active');
     } else {
-      dom.themeBtnIcon.className = 'fa-solid fa-moon';
-      dom.themeToggleBtn.setAttribute('title', 'Switch to Light Mode');
+      if (dom.themeBtnIcon) dom.themeBtnIcon.className = 'fa-solid fa-moon';
+      if (dom.themeToggleBtn) dom.themeToggleBtn.setAttribute('title', 'Switch to Light Mode');
       if (dom.themeDarkOpt) dom.themeDarkOpt.classList.add('active');
       if (dom.themeLightOpt) dom.themeLightOpt.classList.remove('active');
     }
@@ -380,6 +378,7 @@
   }
 
   function updateUnreadChatBadge() {
+    if (!dom.chatUnreadBadge) return;
     if (state.unreadChatCount > 0) {
       dom.chatUnreadBadge.textContent = state.unreadChatCount;
       dom.chatUnreadBadge.classList.remove('hidden');
@@ -402,6 +401,7 @@
   }
 
   function updateSyncStatusBadge(online) {
+    if (!dom.syncStatus) return;
     if (online) {
       dom.syncStatus.className = 'sync-badge online';
       dom.syncStatus.setAttribute('title', 'Supabase Live Sync Connected');
@@ -460,8 +460,8 @@
 
   function renderHeaderAndNav() {
     const dayNum = calculateDayNumber(state.activeDateStr);
-    dom.currentDayLabel.textContent = dayNum > 0 ? `DAY ${dayNum}` : `PRE-START`;
-    dom.dateInput.value = state.activeDateStr;
+    if (dom.currentDayLabel) dom.currentDayLabel.textContent = dayNum > 0 ? `DAY ${dayNum}` : `PRE-START`;
+    if (dom.dateInput) dom.dateInput.value = state.activeDateStr;
 
     const dObj = parseYYYYMMDD(state.activeDateStr);
     const todayStr = formatDateToYYYYMMDD(new Date());
@@ -469,23 +469,23 @@
     if (state.activeDateStr === todayStr) {
       formattedStr = `Today, ${dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}`;
     }
-    dom.dateDisplayStr.textContent = formattedStr;
+    if (dom.dateDisplayStr) dom.dateDisplayStr.textContent = formattedStr;
 
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
 
-    dom.u1NameDisplay.textContent = u1Name;
-    dom.u2NameDisplay.textContent = u2Name;
+    if (dom.u1NameDisplay) dom.u1NameDisplay.textContent = u1Name;
+    if (dom.u2NameDisplay) dom.u2NameDisplay.textContent = u2Name;
 
-    if (!dom.u1Avatar.querySelector('img')) {
+    if (dom.u1Avatar && !dom.u1Avatar.querySelector('img')) {
       dom.u1Avatar.textContent = u1Name.substring(0, 1).toUpperCase();
     }
-    if (!dom.u2Avatar.querySelector('img')) {
+    if (dom.u2Avatar && !dom.u2Avatar.querySelector('img')) {
       dom.u2Avatar.textContent = u2Name.substring(0, 1).toUpperCase();
     }
 
-    dom.u1Streak.textContent = calculateStreak('u1');
-    dom.u2Streak.textContent = calculateStreak('u2');
+    if (dom.u1Streak) dom.u1Streak.textContent = calculateStreak('u1');
+    if (dom.u2Streak) dom.u2Streak.textContent = calculateStreak('u2');
   }
 
   function calculateStreak(userKey) {
@@ -517,6 +517,7 @@
   }
 
   function renderHabitsForUser(userKey, userTicks, habitsList, containerEl) {
+    if (!containerEl) return;
     containerEl.innerHTML = '';
     habitsList.forEach((habitText, idx) => {
       const isChecked = !!userTicks[idx];
@@ -585,13 +586,13 @@
     const total = ticksArr.length;
     const pct = Math.round((completedCount / total) * 100);
 
-    statusEl.textContent = `${completedCount} of ${total} habits completed`;
-    pctEl.textContent = `${pct}%`;
-    barFillEl.style.width = `${pct}%`;
+    if (statusEl) statusEl.textContent = `${completedCount} of ${total} habits completed`;
+    if (pctEl) pctEl.textContent = `${pct}%`;
+    if (barFillEl) barFillEl.style.width = `${pct}%`;
 
     const circumference = 144.51;
     const offset = circumference - (pct / 100) * circumference;
-    ringFillEl.style.strokeDashoffset = offset;
+    if (ringFillEl) ringFillEl.style.strokeDashoffset = offset;
   }
 
   function renderBanterBanner() {
@@ -602,35 +603,20 @@
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
 
-    let icon = '🤝';
-    let title = 'Partners in 75 Hard';
-    let msg = '';
-
+    let icon = '⚡';
     if (u1Count === 5 && u2Count === 5) {
       icon = '🌟';
-      title = 'Perfect Day Together!';
-      msg = `Awesome teamwork! Both ${u1Name} and ${u2Name} completed all 5 daily habits! Keep building momentum!`;
-    } else if (u1Count === 5) {
+    } else if (u1Count === 5 || u2Count === 5) {
       icon = '💪';
-      title = `${u1Name} Completed Day!`;
-      msg = `${u1Name} is done! Support ${u2Name} to complete her ${5 - u2Count} remaining habits today!`;
-    } else if (u2Count === 5) {
-      icon = '💪';
-      title = `${u2Name} Completed Day!`;
-      msg = `${u2Name} is 100% done! Cheer on ${u1Name} to finish his ${5 - u1Count} remaining habits!`;
-    } else if (u1Count > 0 || u2Count > 0) {
-      icon = '⚡';
-      title = 'Making Progress Together';
-      msg = `${u1Name} has ${u1Count}/5 habits done • ${u2Name} has ${u2Count}/5 habits done. Let's finish the day 5/5!`;
-    } else {
-      icon = '🌱';
-      title = 'New Day Focus';
-      msg = `Day ${calculateDayNumber(state.activeDateStr)} is here! Tap habits as you complete them throughout the day.`;
     }
 
-    dom.banterIcon.textContent = icon;
-    dom.banterTitle.textContent = title;
-    dom.banterMessage.textContent = msg;
+    if (dom.banterIcon) dom.banterIcon.textContent = icon;
+    if (dom.banterMessage) {
+      dom.banterMessage.innerHTML = `
+        <div class="progress-line">${escapeHtml(u1Name)} - ${u1Count}/5</div>
+        <div class="progress-line">${escapeHtml(u2Name)} - ${u2Count}/5</div>
+      `;
+    }
   }
 
   function renderBanterChat() {
@@ -638,12 +624,13 @@
     const chatList = entry.chat || [];
 
     const dObj = parseYYYYMMDD(state.activeDateStr);
-    dom.chatDatePill.textContent = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    if (dom.chatDatePill) dom.chatDatePill.textContent = dObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+    if (!dom.chatContainer) return;
     dom.chatContainer.innerHTML = '';
 
     if (chatList.length === 0) {
-      dom.chatContainer.appendChild(dom.chatEmptyState);
+      if (dom.chatEmptyState) dom.chatContainer.appendChild(dom.chatEmptyState);
       return;
     }
 
@@ -692,7 +679,7 @@
     saveLocalHistory();
     renderBanterChat();
 
-    dom.chatInput.value = '';
+    if (dom.chatInput) dom.chatInput.value = '';
 
     await syncRowToSupabase(state.activeDateStr);
   }
@@ -716,18 +703,20 @@
     const senderName = isFromU1 ? u1Name : u2Name;
     const senderDp = isFromU1 ? 'adarsh.jpg' : 'sanjana.jpg';
 
-    dom.encSenderDp.src = senderDp;
-    dom.encTitle.textContent = `${senderName} sent you a boost!`;
-    dom.encMessage.textContent = `"${nudge.text}"`;
+    if (dom.encSenderDp) dom.encSenderDp.src = senderDp;
+    if (dom.encTitle) dom.encTitle.textContent = `${senderName} sent you a boost!`;
+    if (dom.encMessage) dom.encMessage.textContent = `"${nudge.text}"`;
 
-    dom.encouragementPopup.classList.remove('hidden');
+    if (dom.encouragementPopup) dom.encouragementPopup.classList.remove('hidden');
 
-    dom.encDismissBtn.onclick = () => {
-      state.readNudges.push(nudge.id);
-      saveReadNudges();
-      dom.encouragementPopup.classList.add('hidden');
-      showToast(`❤️ Boost acknowledged!`);
-    };
+    if (dom.encDismissBtn) {
+      dom.encDismissBtn.onclick = () => {
+        state.readNudges.push(nudge.id);
+        saveReadNudges();
+        if (dom.encouragementPopup) dom.encouragementPopup.classList.add('hidden');
+        showToast(`❤️ Boost acknowledged!`);
+      };
+    }
   }
 
   async function sendEncouragementBoost(messageText) {
@@ -759,16 +748,16 @@
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
 
-    dom.u1MatrixName.textContent = `${u1Name}'s 75 Days`;
-    dom.u2MatrixName.textContent = `${u2Name}'s 75 Days`;
+    if (dom.u1MatrixName) dom.u1MatrixName.textContent = `${u1Name}'s 75 Days`;
+    if (dom.u2MatrixName) dom.u2MatrixName.textContent = `${u2Name}'s 75 Days`;
 
     let u1CompleteCount = 0;
     let u2CompleteCount = 0;
 
     const todayStr = formatDateToYYYYMMDD(new Date());
 
-    dom.u1MatrixGrid.innerHTML = '';
-    dom.u2MatrixGrid.innerHTML = '';
+    if (dom.u1MatrixGrid) dom.u1MatrixGrid.innerHTML = '';
+    if (dom.u2MatrixGrid) dom.u2MatrixGrid.innerHTML = '';
 
     for (let day = 1; day <= 75; day++) {
       const dateStr = getDateForDayNumber(day);
@@ -783,14 +772,14 @@
       if (u2Done) u2CompleteCount++;
 
       const u1Cell = createMatrixCell(day, dateStr, u1Done, isPastOrToday, isSelected);
-      dom.u1MatrixGrid.appendChild(u1Cell);
+      if (dom.u1MatrixGrid) dom.u1MatrixGrid.appendChild(u1Cell);
 
       const u2Cell = createMatrixCell(day, dateStr, u2Done, isPastOrToday, isSelected);
-      dom.u2MatrixGrid.appendChild(u2Cell);
+      if (dom.u2MatrixGrid) dom.u2MatrixGrid.appendChild(u2Cell);
     }
 
-    dom.u1CompletedCount.textContent = `${u1CompleteCount} / 75 Days Green`;
-    dom.u2CompletedCount.textContent = `${u2CompleteCount} / 75 Days Green`;
+    if (dom.u1CompletedCount) dom.u1CompletedCount.textContent = `${u1CompleteCount} / 75 Days Green`;
+    if (dom.u2CompletedCount) dom.u2CompletedCount.textContent = `${u2CompleteCount} / 75 Days Green`;
   }
 
   function createMatrixCell(dayNum, dateStr, isDone, isPastOrToday, isSelected) {
@@ -816,26 +805,32 @@
   }
 
   function setupEventListeners() {
-    dom.prevDayBtn.addEventListener('click', () => {
-      const current = parseYYYYMMDD(state.activeDateStr);
-      current.setDate(current.getDate() - 1);
-      state.activeDateStr = formatDateToYYYYMMDD(current);
-      renderUI();
-    });
-
-    dom.nextDayBtn.addEventListener('click', () => {
-      const current = parseYYYYMMDD(state.activeDateStr);
-      current.setDate(current.getDate() + 1);
-      state.activeDateStr = formatDateToYYYYMMDD(current);
-      renderUI();
-    });
-
-    dom.dateInput.addEventListener('change', (e) => {
-      if (e.target.value) {
-        state.activeDateStr = e.target.value;
+    if (dom.prevDayBtn) {
+      dom.prevDayBtn.addEventListener('click', () => {
+        const current = parseYYYYMMDD(state.activeDateStr);
+        current.setDate(current.getDate() - 1);
+        state.activeDateStr = formatDateToYYYYMMDD(current);
         renderUI();
-      }
-    });
+      });
+    }
+
+    if (dom.nextDayBtn) {
+      dom.nextDayBtn.addEventListener('click', () => {
+        const current = parseYYYYMMDD(state.activeDateStr);
+        current.setDate(current.getDate() + 1);
+        state.activeDateStr = formatDateToYYYYMMDD(current);
+        renderUI();
+      });
+    }
+
+    if (dom.dateInput) {
+      dom.dateInput.addEventListener('change', (e) => {
+        if (e.target.value) {
+          state.activeDateStr = e.target.value;
+          renderUI();
+        }
+      });
+    }
 
     // Toggle partner habits view in settings
     if (dom.togglePartnerHabitsBtn) {
@@ -864,65 +859,83 @@
     }
 
     // Theme Switchers
-    dom.themeToggleBtn.addEventListener('click', () => {
-      const nextTheme = state.settings.theme === 'dark' ? 'light' : 'dark';
-      applyTheme(nextTheme);
-      saveLocalSettings();
-      showToast(`Switched to ${nextTheme === 'dark' ? 'Dark' : 'Light'} Mode`);
-    });
+    if (dom.themeToggleBtn) {
+      dom.themeToggleBtn.addEventListener('click', () => {
+        const nextTheme = state.settings.theme === 'dark' ? 'light' : 'dark';
+        applyTheme(nextTheme);
+        saveLocalSettings();
+        showToast(`Switched to ${nextTheme === 'dark' ? 'Dark' : 'Light'} Mode`);
+      });
+    }
 
-    dom.themeDarkOpt.addEventListener('click', () => {
-      applyTheme('dark');
-      saveLocalSettings();
-    });
+    if (dom.themeDarkOpt) {
+      dom.themeDarkOpt.addEventListener('click', () => {
+        applyTheme('dark');
+        saveLocalSettings();
+      });
+    }
 
-    dom.themeLightOpt.addEventListener('click', () => {
-      applyTheme('light');
-      saveLocalSettings();
-    });
+    if (dom.themeLightOpt) {
+      dom.themeLightOpt.addEventListener('click', () => {
+        applyTheme('light');
+        saveLocalSettings();
+      });
+    }
 
     // FLOATING ACTION BUTTON (FAB) CHAT HANDLER
-    dom.floatingChatBtn.addEventListener('click', () => {
-      state.isChatOpen = true;
-      state.unreadChatCount = 0;
-      updateUnreadChatBadge();
-      dom.chatModal.classList.remove('hidden');
-      renderBanterChat();
-    });
+    if (dom.floatingChatBtn) {
+      dom.floatingChatBtn.addEventListener('click', () => {
+        state.isChatOpen = true;
+        state.unreadChatCount = 0;
+        updateUnreadChatBadge();
+        if (dom.chatModal) dom.chatModal.classList.remove('hidden');
+        renderBanterChat();
+      });
+    }
 
-    dom.closeChatModalBtn.addEventListener('click', () => {
-      state.isChatOpen = false;
-      dom.chatModal.classList.add('hidden');
-    });
+    if (dom.closeChatModalBtn) {
+      dom.closeChatModalBtn.addEventListener('click', () => {
+        state.isChatOpen = false;
+        if (dom.chatModal) dom.chatModal.classList.add('hidden');
+      });
+    }
 
     // Encouragement Nudge button opens Send Nudge Modal
-    dom.nudgeBtn.addEventListener('click', () => {
-      dom.sendNudgeModal.classList.remove('hidden');
-    });
+    if (dom.nudgeBtn) {
+      dom.nudgeBtn.addEventListener('click', () => {
+        if (dom.sendNudgeModal) dom.sendNudgeModal.classList.remove('hidden');
+      });
+    }
 
-    dom.closeNudgeModalBtn.addEventListener('click', () => {
-      dom.sendNudgeModal.classList.add('hidden');
-    });
+    if (dom.closeNudgeModalBtn) {
+      dom.closeNudgeModalBtn.addEventListener('click', () => {
+        if (dom.sendNudgeModal) dom.sendNudgeModal.classList.add('hidden');
+      });
+    }
 
     document.querySelectorAll('.preset-btn').forEach(btn => {
       btn.addEventListener('click', () => {
         const text = btn.getAttribute('data-text');
-        dom.customNudgeText.value = text;
+        if (dom.customNudgeText) dom.customNudgeText.value = text;
       });
     });
 
-    dom.submitNudgeBtn.addEventListener('click', async () => {
-      const text = dom.customNudgeText.value.trim() || 'Wake up! Finish today\'s 5 habits! ⏰';
-      await sendEncouragementBoost(text);
-      dom.sendNudgeModal.classList.add('hidden');
-      dom.customNudgeText.value = '';
-    });
+    if (dom.submitNudgeBtn) {
+      dom.submitNudgeBtn.addEventListener('click', async () => {
+        const text = dom.customNudgeText ? (dom.customNudgeText.value.trim() || 'Wake up! Finish today\'s 5 habits! ⏰') : 'Wake up!';
+        await sendEncouragementBoost(text);
+        if (dom.sendNudgeModal) dom.sendNudgeModal.classList.add('hidden');
+        if (dom.customNudgeText) dom.customNudgeText.value = '';
+      });
+    }
 
     // Banter Chat form submit
-    dom.chatForm.addEventListener('submit', (e) => {
-      e.preventDefault();
-      postBanterMessage(dom.chatInput.value);
-    });
+    if (dom.chatForm) {
+      dom.chatForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        if (dom.chatInput) postBanterMessage(dom.chatInput.value);
+      });
+    }
 
     document.querySelectorAll('.emoji-chip').forEach(chip => {
       chip.addEventListener('click', () => {
@@ -931,20 +944,33 @@
       });
     });
 
-    dom.openSettingsBtn.addEventListener('click', openSettingsModal);
-    dom.syncStatus.addEventListener('click', openSettingsModal);
-    dom.closeModalBtn.addEventListener('click', closeSettingsModal);
-    dom.settingsModal.addEventListener('click', (e) => {
-      if (e.target === dom.settingsModal) closeSettingsModal();
-    });
+    // OPEN SETTINGS MODAL EVENT LISTENERS
+    if (dom.openSettingsBtn) {
+      dom.openSettingsBtn.addEventListener('click', openSettingsModal);
+    }
+    if (dom.syncStatus) {
+      dom.syncStatus.addEventListener('click', openSettingsModal);
+    }
+    if (dom.closeModalBtn) {
+      dom.closeModalBtn.addEventListener('click', closeSettingsModal);
+    }
+    if (dom.settingsModal) {
+      dom.settingsModal.addEventListener('click', (e) => {
+        if (e.target === dom.settingsModal) closeSettingsModal();
+      });
+    }
 
-    dom.saveSettingsBtn.addEventListener('click', saveSettingsFromModal);
-    dom.resetDefaultsBtn.addEventListener('click', resetDefaultSettings);
+    if (dom.saveSettingsBtn) {
+      dom.saveSettingsBtn.addEventListener('click', saveSettingsFromModal);
+    }
+    if (dom.resetDefaultsBtn) {
+      dom.resetDefaultsBtn.addEventListener('click', resetDefaultSettings);
+    }
     if (dom.resetSupabaseBtn) {
       dom.resetSupabaseBtn.addEventListener('click', openSecurityModal);
     }
 
-    // Security Reset Verification Handlers (Clean modal switching)
+    // Security Reset Verification Handlers
     if (dom.closeSecurityModalBtn) {
       dom.closeSecurityModalBtn.addEventListener('click', closeSecurityModal);
     }
@@ -998,84 +1024,89 @@
   }
 
   function showToast(message) {
+    if (!dom.toastMsg || !dom.toast) return;
     dom.toastMsg.textContent = message;
     dom.toast.classList.remove('hidden');
 
     setTimeout(() => {
-      dom.toast.classList.add('hidden');
+      if (dom.toast) dom.toast.classList.add('hidden');
     }, 3500);
   }
 
   function openSettingsModal() {
-    dom.u1NameInput.value = state.settings.u1Name || 'Adarsh';
-    dom.u2NameInput.value = state.settings.u2Name || 'Sanjana';
+    try {
+      if (dom.u1NameInput) dom.u1NameInput.value = state.settings.u1Name || 'Adarsh';
+      if (dom.u2NameInput) dom.u2NameInput.value = state.settings.u2Name || 'Sanjana';
 
-    if (dom.supabaseUrlInput) dom.supabaseUrlInput.value = GET_SUPABASE_URL();
-    if (dom.supabaseKeyInput) dom.supabaseKeyInput.value = GET_SUPABASE_KEY();
+      const u1Habits = state.settings.u1Habits || DEFAULT_U1_HABITS;
+      (dom.u1HabitInputs || []).forEach((inputEl, idx) => {
+        if (inputEl) inputEl.value = u1Habits[idx] || '';
+      });
 
-    const u1Habits = state.settings.u1Habits || DEFAULT_U1_HABITS;
-    dom.u1HabitInputs.forEach((inputEl, idx) => {
-      inputEl.value = u1Habits[idx] || '';
-    });
+      const u2Habits = state.settings.u2Habits || DEFAULT_U2_HABITS;
+      (dom.u2HabitInputs || []).forEach((inputEl, idx) => {
+        if (inputEl) inputEl.value = u2Habits[idx] || '';
+      });
 
-    const u2Habits = state.settings.u2Habits || DEFAULT_U2_HABITS;
-    dom.u2HabitInputs.forEach((inputEl, idx) => {
-      inputEl.value = u2Habits[idx] || '';
-    });
+      if (dom.startDateInput) dom.startDateInput.value = state.settings.startDate || formatDateToYYYYMMDD(new Date());
 
-    dom.startDateInput.value = state.settings.startDate || formatDateToYYYYMMDD(new Date());
+      applyTheme(state.settings.theme || 'dark');
+      applyIdentity(state.settings.myUser || 'u1');
 
-    applyTheme(state.settings.theme || 'dark');
-    applyIdentity(state.settings.myUser || 'u1');
-
-    dom.settingsModal.classList.remove('hidden');
+      if (dom.settingsModal) dom.settingsModal.classList.remove('hidden');
+    } catch (err) {
+      console.error('Error opening settings modal:', err);
+      if (dom.settingsModal) dom.settingsModal.classList.remove('hidden');
+    }
   }
 
   function closeSettingsModal() {
-    dom.settingsModal.classList.add('hidden');
+    if (dom.settingsModal) dom.settingsModal.classList.add('hidden');
   }
 
   async function saveSettingsFromModal() {
-    state.settings.u1Name = dom.u1NameInput.value.trim() || 'Adarsh';
-    state.settings.u2Name = dom.u2NameInput.value.trim() || 'Sanjana';
+    try {
+      if (dom.u1NameInput) state.settings.u1Name = dom.u1NameInput.value.trim() || 'Adarsh';
+      if (dom.u2NameInput) state.settings.u2Name = dom.u2NameInput.value.trim() || 'Sanjana';
 
-    if (dom.supabaseUrlInput && dom.supabaseUrlInput.value.trim()) {
-      localStorage.setItem('75hard_supabase_url', dom.supabaseUrlInput.value.trim());
+      if (dom.u1HabitInputs) {
+        state.settings.u1Habits = dom.u1HabitInputs.map((inputEl, i) => {
+          return (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : DEFAULT_U1_HABITS[i];
+        });
+      }
+
+      if (dom.u2HabitInputs) {
+        state.settings.u2Habits = dom.u2HabitInputs.map((inputEl, i) => {
+          return (inputEl && inputEl.value.trim()) ? inputEl.value.trim() : DEFAULT_U2_HABITS[i];
+        });
+      }
+
+      if (dom.startDateInput && dom.startDateInput.value) {
+        state.settings.startDate = dom.startDateInput.value;
+      }
+
+      const activeThemeBtn = document.querySelector('.theme-opt-btn.active');
+      if (activeThemeBtn) {
+        const selectedTheme = activeThemeBtn.getAttribute('data-theme-val');
+        applyTheme(selectedTheme);
+      }
+
+      const activeIdBtn = document.querySelector('.identity-opt-btn.active');
+      if (activeIdBtn) {
+        const selectedUser = activeIdBtn.getAttribute('data-id-val');
+        applyIdentity(selectedUser);
+      }
+
+      saveLocalSettings();
+      closeSettingsModal();
+
+      await initSupabase();
+      renderUI();
+      showToast('Settings saved!');
+    } catch (err) {
+      console.error('Error saving settings:', err);
+      closeSettingsModal();
     }
-    if (dom.supabaseKeyInput && dom.supabaseKeyInput.value.trim()) {
-      localStorage.setItem('75hard_supabase_key', dom.supabaseKeyInput.value.trim());
-    }
-
-    state.settings.u1Habits = dom.u1HabitInputs.map((inputEl, i) => {
-      return inputEl.value.trim() || DEFAULT_U1_HABITS[i];
-    });
-
-    state.settings.u2Habits = dom.u2HabitInputs.map((inputEl, i) => {
-      return inputEl.value.trim() || DEFAULT_U2_HABITS[i];
-    });
-
-    if (dom.startDateInput.value) {
-      state.settings.startDate = dom.startDateInput.value;
-    }
-
-    const activeThemeBtn = document.querySelector('.theme-opt-btn.active');
-    if (activeThemeBtn) {
-      const selectedTheme = activeThemeBtn.getAttribute('data-theme-val');
-      applyTheme(selectedTheme);
-    }
-
-    const activeIdBtn = document.querySelector('.identity-opt-btn.active');
-    if (activeIdBtn) {
-      const selectedUser = activeIdBtn.getAttribute('data-id-val');
-      applyIdentity(selectedUser);
-    }
-
-    saveLocalSettings();
-    closeSettingsModal();
-
-    await initSupabase();
-    renderUI();
-    showToast('Settings saved!');
   }
 
   function resetDefaultSettings() {

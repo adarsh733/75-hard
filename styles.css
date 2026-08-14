@@ -252,6 +252,12 @@ body {
   font-size: 0.95rem;
   cursor: pointer;
   transition: var(--transition-fast);
+  position: relative;
+  z-index: 10;
+}
+
+.sync-badge i {
+  pointer-events: none;
 }
 
 .sync-badge.online, .sync-badge.supabase {
@@ -331,6 +337,12 @@ body {
   justify-content: center;
   cursor: pointer;
   transition: var(--transition-fast);
+  position: relative;
+  z-index: 10;
+}
+
+.icon-btn i {
+  pointer-events: none;
 }
 
 .icon-btn:hover, .icon-btn:active {
@@ -406,7 +418,7 @@ body {
   cursor: pointer;
 }
 
-/* Supportive Partner Banner */
+/* Supportive Partner Banner (Clean Line-By-Line Counter) */
 .banter-banner {
   display: flex;
   align-items: center;
@@ -419,9 +431,9 @@ body {
 }
 
 .banter-icon {
-  font-size: 1.5rem;
-  min-width: 40px;
-  height: 40px;
+  font-size: 1.4rem;
+  min-width: 38px;
+  height: 38px;
   border-radius: 12px;
   background: rgba(255, 255, 255, 0.05);
   display: flex;
@@ -433,20 +445,21 @@ body {
   flex: 1;
 }
 
-.banter-title {
+.banter-message {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
   font-family: var(--font-heading);
-  font-size: 0.75rem;
+  font-size: 0.95rem;
   font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.8px;
-  color: var(--text-muted);
+  color: var(--text-main);
+  line-height: 1.25;
 }
 
-.banter-message {
-  font-size: 0.85rem;
-  font-weight: 600;
-  color: var(--text-main);
-  line-height: 1.3;
+.progress-line {
+  display: flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .nudge-btn {
