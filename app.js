@@ -403,11 +403,13 @@
 
   function updateSyncStatusBadge(online) {
     if (online) {
-      dom.syncStatus.className = 'sync-badge supabase';
-      dom.syncStatus.innerHTML = '<i class="fa-solid fa-bolt"></i> <span>Supabase Live</span>';
+      dom.syncStatus.className = 'sync-badge online';
+      dom.syncStatus.setAttribute('title', 'Supabase Live Sync Connected');
+      dom.syncStatus.innerHTML = '<i class="fa-solid fa-bolt"></i>';
     } else {
-      dom.syncStatus.className = 'sync-badge local';
-      dom.syncStatus.innerHTML = '<i class="fa-solid fa-hard-drive"></i> <span>Local Mode</span>';
+      dom.syncStatus.className = 'sync-badge offline';
+      dom.syncStatus.setAttribute('title', 'Offline / Local Mode');
+      dom.syncStatus.innerHTML = '<i class="fa-solid fa-bolt"></i>';
     }
   }
 
