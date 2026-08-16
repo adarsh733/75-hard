@@ -27,8 +27,19 @@
     "🥗 Clean Diet & No Sugar"
   ];
 
-  const GET_SUPABASE_URL = () => (window.SUPABASE_URL && window.SUPABASE_URL.trim()) ? window.SUPABASE_URL.trim() : (localStorage.getItem('75hard_supabase_url') || DEFAULT_SUPABASE_URL);
-  const GET_SUPABASE_KEY = () => (window.SUPABASE_KEY && window.SUPABASE_KEY.trim()) ? window.SUPABASE_KEY.trim() : (localStorage.getItem('75hard_supabase_key') || DEFAULT_SUPABASE_KEY);
+  const GET_SUPABASE_URL = () => {
+    const override = localStorage.getItem('75hard_supabase_url');
+    if (override && override.trim() && override.trim().startsWith('http')) return override.trim();
+    if (window.SUPABASE_URL && window.SUPABASE_URL.trim() && window.SUPABASE_URL.trim().startsWith('http')) return window.SUPABASE_URL.trim();
+    return DEFAULT_SUPABASE_URL;
+  };
+
+  const GET_SUPABASE_KEY = () => {
+    const override = localStorage.getItem('75hard_supabase_key');
+    if (override && override.trim() && override.trim().length > 20) return override.trim();
+    if (window.SUPABASE_KEY && window.SUPABASE_KEY.trim() && window.SUPABASE_KEY.trim().length > 20) return window.SUPABASE_KEY.trim();
+    return DEFAULT_SUPABASE_KEY;
+  };
 
   const STORAGE_KEY_SETTINGS = '75hard_duo_settings';
   const STORAGE_KEY_DATA = '75hard_duo_history_data';
@@ -59,6 +70,10 @@
 
   // DOM Elements
   const dom = {
+    // Header Logged-In User DP Avatar Button
+    headerUserDpBtn: document.getElementById('header-user-dp-btn'),
+    headerUserDpImg: document.getElementById('header-user-dp-img'),
+
     syncStatus: document.getElementById('sync-status'),
     notifBellBtn: document.getElementById('notif-bell-btn'),
     notifBellIcon: document.getElementById('notif-bell-icon'),
@@ -71,8 +86,9 @@
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
 
-    // First Time Identity Prompt DOM
+    // First Time / Switch Identity Prompt DOM
     firstTimeIdentityModal: document.getElementById('first-time-identity-modal'),
+    closeIdentityModalBtn: document.getElementById('close-identity-modal-btn'),
     selectU1Card: document.getElementById('select-u1-card'),
     selectU2Card: document.getElementById('select-u2-card'),
 
@@ -210,7 +226,7 @@
     applyIdentity(state.settings.myUser || 'u1');
 
     setupEventListeners();
-    await initSupabase();
+    await attemptSupabaseReconnect();
 
     renderUI();
     checkPendingPopupEncouragement();
@@ -221,6 +237,18 @@
 
     // START SMART ACCOUNTABILITY REMINDER ENGINE
     startAccountabilityReminderEngine();
+
+    // Listen to network online/offline events for self-healing status
+    window.addEventListener('online', async () => {
+      await attemptSupabaseReconnect();
+      renderUI();
+      showToast('⚡ Network restored! Live Sync Connected!');
+    });
+
+    window.addEventListener('offline', () => {
+      updateSyncStatusBadge(false);
+      showToast('⚠️ Network Offline - Local Mode Active');
+    });
   }
 
   function registerServiceWorker() {
@@ -423,6 +451,13 @@
     const isU1 = (userKey === 'u1');
     const activeName = isU1 ? u1Name : u2Name;
 
+    // Header Logged-In User Profile Avatar DP
+    if (dom.headerUserDpImg) dom.headerUserDpImg.src = isU1 ? 'adarsh.jpg' : 'sanjana.jpg';
+    if (dom.headerUserDpBtn) {
+      dom.headerUserDpBtn.style.borderColor = isU1 ? 'var(--u1-color)' : 'var(--u2-color)';
+      dom.headerUserDpBtn.style.boxShadow = isU1 ? '0 0 10px var(--u1-glow)' : '0 0 10px var(--u2-glow)';
+    }
+
     // Chat Header Fixed Device Badge
     if (dom.chatUserDpImg) dom.chatUserDpImg.src = isU1 ? 'adarsh.jpg' : 'sanjana.jpg';
     if (dom.chatUserNameText) dom.chatUserNameText.textContent = activeName;
@@ -489,151 +524,180 @@
     } catch (e) {}
   }
 
-  // SUPABASE REALTIME INITIALIZATION & LIVE POSTGRES CHANNEL
-  async function initSupabase() {
+  // SUPABASE REALTIME RECONNECT ENGINE WITH REST API PING VERIFICATION
+  async function attemptSupabaseReconnect() {
     const targetUrl = GET_SUPABASE_URL();
     const targetKey = GET_SUPABASE_KEY();
 
-    if (window.supabase && targetUrl && targetKey) {
-      try {
-        state.supabaseClient = window.supabase.createClient(targetUrl, targetKey);
-        state.isOnline = true;
-        updateSyncStatusBadge(true);
-
-        // Initial fetch of habit_history
-        const { data, error } = await state.supabaseClient.from('habit_history').select('*');
-        if (data && Array.isArray(data)) {
-          data.forEach(row => {
-            if (row.date === '_APP_SETTINGS_') {
-              applySyncedAppSettings(row);
-            } else if (row.date) {
-              const u1Payload = unpackPayload(row.u1_ticks);
-              const u2Payload = unpackPayload(row.u2_ticks);
-
-              state.history[row.date] = {
-                u1: u1Payload.ticks,
-                u2: u2Payload.ticks,
-                chat: u1Payload.chat || u2Payload.chat || [],
-                nudge: u1Payload.nudge || u2Payload.nudge || null
-              };
-            }
-          });
-          saveLocalHistory();
-          renderUI();
-          checkPendingPopupEncouragement();
-        }
-
-        // Subscribe to live Postgres changes across both devices
-        state.supabaseClient
-          .channel('realtime:habit_history')
-          .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_history' }, (payload) => {
-            if (payload.new && payload.new.date) {
-              const dateStr = payload.new.date;
-              const u1Name = state.settings.u1Name || 'Adarsh';
-              const u2Name = state.settings.u2Name || 'Sanjana';
-
-              // PUSH NOTIFICATION FOR APP SETTINGS SYNC
-              if (dateStr === '_APP_SETTINGS_') {
-                applySyncedAppSettings(payload.new);
-                saveLocalSettings();
-                renderUI();
-                const partnerName = state.settings.myUser === 'u1' ? u2Name : u1Name;
-                const partnerDp = state.settings.myUser === 'u1' ? 'sanjana.jpg' : 'adarsh.jpg';
-
-                triggerDeviceNotification(`⚙️ Settings Synced`, `${partnerName} updated habit names or challenge settings!`, partnerDp);
-                showToast('⚙️ Habit names updated from partner!');
-                return;
-              }
-
-              const prevChatCount = (state.history[dateStr]?.chat || []).length;
-              
-              const u1Payload = unpackPayload(payload.new.u1_ticks);
-              const u2Payload = unpackPayload(payload.new.u2_ticks);
-
-              const partnerUserKey = state.settings.myUser === 'u1' ? 'u2' : 'u1';
-              const prevPartnerCount = (state.history[dateStr]?.[partnerUserKey] || []).filter(Boolean).length;
-              const newPartnerCount = (partnerUserKey === 'u1' ? u1Payload.ticks : u2Payload.ticks).filter(Boolean).length;
-
-              const newChatList = u1Payload.chat || u2Payload.chat || [];
-              const newNudge = u1Payload.nudge || u2Payload.nudge || null;
-
-              state.history[dateStr] = {
-                u1: u1Payload.ticks,
-                u2: u2Payload.ticks,
-                chat: newChatList,
-                nudge: newNudge
-              };
-              
-              saveLocalHistory();
-              renderUI();
-              checkPendingPopupEncouragement();
-
-              const todayStr = formatDateToYYYYMMDD(new Date());
-
-              // TRIGGER SYSTEM PUSH NOTIFICATION FOR PARTNER 100% GREEN DAY (5/5 HABITS DONE)
-              if (newPartnerCount === 5 && prevPartnerCount < 5 && dateStr === todayStr) {
-                const partnerName = partnerUserKey === 'u1' ? u1Name : u2Name;
-                const partnerDp = partnerUserKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
-
-                triggerDeviceNotification(`🌟 ${partnerName} finished 5/5 Habits!`, `${partnerName} just achieved a 100% Green Day! Hurry up and catch up! 🔥`, partnerDp);
-                showToast(`🌟 ${partnerName} finished 5/5 Habits!`);
-              }
-
-              // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES
-              if (newChatList.length > prevChatCount) {
-                const latestMsg = newChatList[newChatList.length - 1];
-                if (latestMsg && latestMsg.sender !== state.settings.myUser) {
-                  const senderName = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? u1Name : u2Name;
-                  const senderDp = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
-
-                  // Trigger System Push Notification Banner on phone lock screen / top bar
-                  triggerDeviceNotification(`💬 Banter from ${senderName}`, latestMsg.text, senderDp);
-
-                  if (!state.isChatOpen) {
-                    state.unreadChatCount += (newChatList.length - prevChatCount);
-                    updateUnreadChatBadge();
-                    showToast(`💬 New banter from ${senderName}!`);
-                  } else {
-                    renderBanterChat();
-                  }
-
-                  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
-                }
-              }
-
-              // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW ENCOURAGEMENT BOOST
-              if (newNudge && newNudge.id && newNudge.sender !== state.settings.myUser && !state.readNudges.includes(newNudge.id)) {
-                const senderName = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? u1Name : u2Name;
-                const senderDp = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
-
-                triggerDeviceNotification(`❤️ Boost from ${senderName}!`, newNudge.text, senderDp);
-              }
-
-              // TRIGGER SYSTEM PUSH NOTIFICATION WHEN PARTNER ACKNOWLEDGES A BOOST
-              if (newNudge && newNudge.acknowledged && newNudge.sender === state.settings.myUser && newNudge.ackSender !== state.settings.myUser) {
-                const ackKey = `ack_${newNudge.id}`;
-                if (!state.readNudges.includes(ackKey)) {
-                  state.readNudges.push(ackKey);
-                  saveReadNudges();
-
-                  const partnerName = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? u1Name : u2Name;
-                  const partnerDp = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
-
-                  triggerDeviceNotification(`❤️ Boost Acknowledged by ${partnerName}!`, `${partnerName} tapped "Thanks! Let's Crush It!" 💪`, partnerDp);
-                  showToast(`❤️ ${partnerName} acknowledged your boost!`);
-                  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
-                }
-              }
-            }
-          })
-          .subscribe();
-
-      } catch (err) {
-        console.error('Supabase Init Error:', err);
-        updateSyncStatusBadge(false);
-      }
-    } else {
+    if (!window.supabase) {
+      console.warn('Supabase JS SDK not loaded yet.');
       updateSyncStatusBadge(false);
+      return false;
+    }
+
+    try {
+      // Direct REST ping test to verify credentials & network reachability
+      const pingRes = await fetch(`${targetUrl}/rest/v1/habit_history?select=date&limit=1`, {
+        headers: {
+          'apikey': targetKey,
+          'Authorization': `Bearer ${targetKey}`
+        }
+      });
+
+      if (!pingRes.ok) {
+        console.error('Supabase REST Ping failed with status:', pingRes.status);
+        state.isOnline = false;
+        updateSyncStatusBadge(false);
+        return false;
+      }
+
+      state.supabaseClient = window.supabase.createClient(targetUrl, targetKey);
+      state.isOnline = true;
+      updateSyncStatusBadge(true);
+
+      const { data, error } = await state.supabaseClient.from('habit_history').select('*');
+      if (!error && data && Array.isArray(data)) {
+        data.forEach(row => {
+          if (row.date === '_APP_SETTINGS_') {
+            applySyncedAppSettings(row);
+          } else if (row.date) {
+            const u1Payload = unpackPayload(row.u1_ticks);
+            const u2Payload = unpackPayload(row.u2_ticks);
+
+            state.history[row.date] = {
+              u1: u1Payload.ticks,
+              u2: u2Payload.ticks,
+              chat: u1Payload.chat || u2Payload.chat || [],
+              nudge: u1Payload.nudge || u2Payload.nudge || null
+            };
+          }
+        });
+        saveLocalHistory();
+        checkPendingPopupEncouragement();
+      }
+
+      // Subscribe to live Postgres channel
+      state.supabaseClient
+        .channel('realtime:habit_history')
+        .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_history' }, (payload) => {
+          if (payload.new && payload.new.date) {
+            state.isOnline = true;
+            updateSyncStatusBadge(true);
+
+            const dateStr = payload.new.date;
+            const u1Name = state.settings.u1Name || 'Adarsh';
+            const u2Name = state.settings.u2Name || 'Sanjana';
+
+            // PUSH NOTIFICATION FOR APP SETTINGS SYNC
+            if (dateStr === '_APP_SETTINGS_') {
+              applySyncedAppSettings(payload.new);
+              saveLocalSettings();
+              renderUI();
+              const partnerName = state.settings.myUser === 'u1' ? u2Name : u1Name;
+              const partnerDp = state.settings.myUser === 'u1' ? 'sanjana.jpg' : 'adarsh.jpg';
+
+              triggerDeviceNotification(`⚙️ Settings Synced`, `${partnerName} updated habit names or challenge settings!`, partnerDp);
+              showToast('⚙️ Habit names updated from partner!');
+              return;
+            }
+
+            const prevChatCount = (state.history[dateStr]?.chat || []).length;
+            
+            const u1Payload = unpackPayload(payload.new.u1_ticks);
+            const u2Payload = unpackPayload(payload.new.u2_ticks);
+
+            const partnerUserKey = state.settings.myUser === 'u1' ? 'u2' : 'u1';
+            const prevPartnerCount = (state.history[dateStr]?.[partnerUserKey] || []).filter(Boolean).length;
+            const newPartnerCount = (partnerUserKey === 'u1' ? u1Payload.ticks : u2Payload.ticks).filter(Boolean).length;
+
+            const newChatList = u1Payload.chat || u2Payload.chat || [];
+            const newNudge = u1Payload.nudge || u2Payload.nudge || null;
+
+            state.history[dateStr] = {
+              u1: u1Payload.ticks,
+              u2: u2Payload.ticks,
+              chat: newChatList,
+              nudge: newNudge
+            };
+            
+            saveLocalHistory();
+            renderUI();
+            checkPendingPopupEncouragement();
+
+            const todayStr = formatDateToYYYYMMDD(new Date());
+
+            // TRIGGER SYSTEM PUSH NOTIFICATION FOR PARTNER 100% GREEN DAY (5/5 HABITS DONE)
+            if (newPartnerCount === 5 && prevPartnerCount < 5 && dateStr === todayStr) {
+              const partnerName = partnerUserKey === 'u1' ? u1Name : u2Name;
+              const partnerDp = partnerUserKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
+
+              triggerDeviceNotification(`🌟 ${partnerName} finished 5/5 Habits!`, `${partnerName} just achieved a 100% Green Day! Hurry up and catch up! 🔥`, partnerDp);
+              showToast(`🌟 ${partnerName} finished 5/5 Habits!`);
+            }
+
+            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES
+            if (newChatList.length > prevChatCount) {
+              const latestMsg = newChatList[newChatList.length - 1];
+              if (latestMsg && latestMsg.sender !== state.settings.myUser) {
+                const senderName = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? u1Name : u2Name;
+                const senderDp = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
+
+                // Trigger System Push Notification Banner on phone lock screen / top bar
+                triggerDeviceNotification(`💬 Banter from ${senderName}`, latestMsg.text, senderDp);
+
+                if (!state.isChatOpen) {
+                  state.unreadChatCount += (newChatList.length - prevChatCount);
+                  updateUnreadChatBadge();
+                  showToast(`💬 New banter from ${senderName}!`);
+                } else {
+                  renderBanterChat();
+                }
+
+                if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+              }
+            }
+
+            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW ENCOURAGEMENT BOOST
+            if (newNudge && newNudge.id && newNudge.sender !== state.settings.myUser && !state.readNudges.includes(newNudge.id)) {
+              const senderName = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? u1Name : u2Name;
+              const senderDp = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
+
+              triggerDeviceNotification(`❤️ Boost from ${senderName}!`, newNudge.text, senderDp);
+            }
+
+            // TRIGGER SYSTEM PUSH NOTIFICATION WHEN PARTNER ACKNOWLEDGES A BOOST
+            if (newNudge && newNudge.acknowledged && newNudge.sender === state.settings.myUser && newNudge.ackSender !== state.settings.myUser) {
+              const ackKey = `ack_${newNudge.id}`;
+              if (!state.readNudges.includes(ackKey)) {
+                state.readNudges.push(ackKey);
+                saveReadNudges();
+
+                const partnerName = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? u1Name : u2Name;
+                const partnerDp = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
+
+                triggerDeviceNotification(`❤️ Boost Acknowledged by ${partnerName}!`, `${partnerName} tapped "Thanks! Let's Crush It!" 💪`, partnerDp);
+                showToast(`❤️ ${partnerName} acknowledged your boost!`);
+                if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
+              }
+            }
+          }
+        })
+        .subscribe((status) => {
+          if (status === 'SUBSCRIBED') {
+            state.isOnline = true;
+            updateSyncStatusBadge(true);
+          } else if (status === 'CLOSED' || status === 'CHANNEL_ERROR') {
+            state.isOnline = false;
+            updateSyncStatusBadge(false);
+          }
+        });
+
+      return true;
+    } catch (err) {
+      console.error('Supabase Reconnect Error:', err);
+      state.isOnline = false;
+      updateSyncStatusBadge(false);
+      return false;
     }
   }
 
@@ -727,11 +791,11 @@
     if (!dom.syncStatus) return;
     if (online) {
       dom.syncStatus.className = 'sync-badge online';
-      dom.syncStatus.setAttribute('title', 'Supabase Live Sync Connected');
+      dom.syncStatus.setAttribute('title', 'Supabase Live Sync Connected - Tap to Re-test');
       dom.syncStatus.innerHTML = '<i class="fa-solid fa-bolt"></i>';
     } else {
       dom.syncStatus.className = 'sync-badge offline';
-      dom.syncStatus.setAttribute('title', 'Offline / Local Mode');
+      dom.syncStatus.setAttribute('title', 'Offline / Connection Retry Required - Tap to Re-connect');
       dom.syncStatus.innerHTML = '<i class="fa-solid fa-bolt"></i>';
     }
   }
@@ -1150,6 +1214,19 @@
   }
 
   function setupEventListeners() {
+    // Logged-in User Profile Picture Avatar Button in Header (Opens Identity Switcher Modal)
+    if (dom.headerUserDpBtn) {
+      dom.headerUserDpBtn.addEventListener('click', () => {
+        if (dom.firstTimeIdentityModal) dom.firstTimeIdentityModal.classList.remove('hidden');
+      });
+    }
+
+    if (dom.closeIdentityModalBtn) {
+      dom.closeIdentityModalBtn.addEventListener('click', () => {
+        if (dom.firstTimeIdentityModal) dom.firstTimeIdentityModal.classList.add('hidden');
+      });
+    }
+
     // Push Notification Bell Button Handlers
     if (dom.notifBellBtn) {
       dom.notifBellBtn.addEventListener('click', requestNotificationPermission);
@@ -1158,7 +1235,7 @@
       dom.settingsEnableNotifBtn.addEventListener('click', requestNotificationPermission);
     }
 
-    // First-Time Identity Modal Choice Cards
+    // First-Time / Switch Identity Modal Choice Cards
     if (dom.selectU1Card) {
       dom.selectU1Card.addEventListener('click', () => {
         applyIdentity('u1');
@@ -1185,13 +1262,39 @@
         const iconEl = dom.refreshBtn.querySelector('i');
         if (iconEl) iconEl.classList.add('fa-spin');
         
-        await initSupabase();
+        const success = await attemptSupabaseReconnect();
         renderUI();
 
         setTimeout(() => {
           if (iconEl) iconEl.classList.remove('fa-spin');
-          showToast('🔄 Refreshed latest data!');
+          showToast(success ? '⚡ Connected to Supabase Live Sync!' : '⚠️ Retry Connection...');
         }, 500);
+      });
+    }
+
+    // Dedicated Sync Status Re-Connection Test Handler (Clears stale local overrides & re-establishes clean Supabase connection)
+    if (dom.syncStatus) {
+      dom.syncStatus.addEventListener('click', async (e) => {
+        if (e) {
+          e.stopPropagation();
+          e.preventDefault();
+        }
+
+        showToast('⚡ Reconnecting to Supabase...');
+
+        // Clear any stale local overrides
+        localStorage.removeItem('75hard_supabase_url');
+        localStorage.removeItem('75hard_supabase_key');
+
+        const success = await attemptSupabaseReconnect();
+        if (success) {
+          renderUI();
+          showToast('⚡ Connected to Supabase Live Sync!');
+          if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+        } else {
+          showToast('⚠️ Connection failed. Retrying...');
+          if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+        }
       });
     }
 
@@ -1325,12 +1428,9 @@
       });
     });
 
-    // OPEN SETTINGS MODAL EVENT LISTENERS
+    // OPEN SETTINGS MODAL EVENT LISTENERS (Gear Button ONLY)
     if (dom.openSettingsBtn) {
       dom.openSettingsBtn.addEventListener('click', openSettingsModal);
-    }
-    if (dom.syncStatus) {
-      dom.syncStatus.addEventListener('click', openSettingsModal);
     }
     if (dom.closeModalBtn) {
       dom.closeModalBtn.addEventListener('click', closeSettingsModal);

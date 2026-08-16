@@ -22,8 +22,8 @@
   
   <link rel="stylesheet" href="styles.css">
 
-  <!-- Supabase JS Client SDK -->
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <!-- Supabase JS Client SDK with Fallback CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2" onerror="this.onerror=null;this.src='https://unpkg.com/@supabase/supabase-js@2'"></script>
 
   <!-- Runtime Netlify Config Injection -->
   <script src="config.js" onerror="console.warn('config.js not found, using default Supabase credentials')"></script>
@@ -43,8 +43,13 @@
       </div>
 
       <div class="header-actions">
+        <!-- Logged-in User Profile Picture Avatar Button (Tap to Switch Identity) -->
+        <button id="header-user-dp-btn" class="header-user-avatar-btn" title="Tap to view/switch device user identity">
+          <img id="header-user-dp-img" src="adarsh.jpg" alt="User Profile DP">
+        </button>
+
         <!-- Minimalist Thunder Icon for Live Sync Status (Green = Connected, Red = Offline) -->
-        <div id="sync-status" class="sync-badge online" title="Supabase Live Sync Connected">
+        <div id="sync-status" class="sync-badge online" title="Tap to Test Supabase Live Sync Connection">
           <i class="fa-solid fa-bolt"></i>
         </div>
 
@@ -225,14 +230,15 @@
       <span id="chat-unread-badge" class="chat-badge hidden">0</span>
     </button>
 
-    <!-- FIRST-TIME DEVICE IDENTITY PROMPT MODAL ("WHO ARE YOU?") -->
+    <!-- FIRST-TIME / USER SWITCH DEVICE IDENTITY PROMPT MODAL ("WHO ARE YOU?") -->
     <div id="first-time-identity-modal" class="modal-overlay hidden">
       <div class="modal-card identity-prompt-card">
-        <div class="identity-prompt-header">
+        <div class="modal-header identity-modal-header">
           <div class="sparkle-icon">✨</div>
           <h2>Who is using this phone?</h2>
-          <p>Select your identity once for this device:</p>
+          <button id="close-identity-modal-btn" class="close-btn">&times;</button>
         </div>
+        <p class="identity-subtitle">Select your identity for this device:</p>
 
         <div class="identity-cards-grid">
           <!-- Card Adarsh -->

@@ -1,8 +1,9 @@
 /* ==========================================
    75 HARD DUO - SERVICE WORKER & PUSH NOTIFICATIONS
+   NETWORK-FIRST SERVING FOR LIVE CODE UPDATES
    ========================================== */
 
-const CACHE_NAME = '75hard-duo-v2';
+const CACHE_NAME = '75hard-duo-v3';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -38,11 +39,15 @@ self.addEventListener('activate', (event) => {
   );
 });
 
+// Network-First for JS, CSS, and HTML files so code updates arrive instantly!
 self.addEventListener('fetch', (event) => {
-  // Network first fallback to cache for HTML/API
-  if (event.request.mode === 'navigate' || event.request.url.includes('/rest/v1/')) {
+  const url = event.request.url;
+
+  if (event.request.mode === 'navigate' || url.includes('/rest/v1/') || url.endsWith('.js') || url.endsWith('.css') || url.endsWith('.html')) {
     event.respondWith(
-      fetch(event.request).catch(() => caches.match(event.request))
+      fetch(event.request).then((networkResponse) => {
+        return networkResponse;
+      }).catch(() => caches.match(event.request))
     );
     return;
   }
