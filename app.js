@@ -374,8 +374,16 @@
       if (saved) {
         const parsed = JSON.parse(saved);
         state.settings = Object.assign({}, state.settings, parsed);
-        if (!state.settings.u1Habits) state.settings.u1Habits = [...DEFAULT_U1_HABITS];
-        if (!state.settings.u2Habits) state.settings.u2Habits = [...DEFAULT_U2_HABITS];
+        
+        // Auto-sanitize any lingering test data
+        if (!state.settings.u1Habits || !Array.isArray(state.settings.u1Habits) || state.settings.u1Habits[0].includes('Habit A') || state.settings.u1Habits[0].includes('script')) {
+          state.settings.u1Habits = [...DEFAULT_U1_HABITS];
+        }
+        if (!state.settings.u2Habits || !Array.isArray(state.settings.u2Habits) || state.settings.u2Habits[0].includes('Habit A') || state.settings.u2Habits[0].includes('script')) {
+          state.settings.u2Habits = [...DEFAULT_U2_HABITS];
+        }
+        if (!state.settings.u1Name || state.settings.u1Name.includes('<test>')) state.settings.u1Name = 'Adarsh';
+        if (!state.settings.u2Name || state.settings.u2Name.includes('& Co')) state.settings.u2Name = 'Sanjana';
         if (!state.settings.theme) state.settings.theme = 'dark';
         if (!state.settings.myUser) state.settings.myUser = 'u1';
       }
@@ -635,10 +643,30 @@
       const u1Data = typeof row.u1_ticks === 'string' ? JSON.parse(row.u1_ticks) : row.u1_ticks;
       const u2Data = typeof row.u2_ticks === 'string' ? JSON.parse(row.u2_ticks) : row.u2_ticks;
 
-      if (u1Data.habits && Array.isArray(u1Data.habits)) state.settings.u1Habits = u1Data.habits;
-      if (u2Data.habits && Array.isArray(u2Data.habits)) state.settings.u2Habits = u2Data.habits;
-      if (u1Data.name) state.settings.u1Name = u1Data.name;
-      if (u2Data.name) state.settings.u2Name = u2Data.name;
+      if (u1Data.habits && Array.isArray(u1Data.habits) && !u1Data.habits[0].includes('Habit A') && !u1Data.habits[0].includes('script')) {
+        state.settings.u1Habits = u1Data.habits;
+      } else {
+        state.settings.u1Habits = [...DEFAULT_U1_HABITS];
+      }
+
+      if (u2Data.habits && Array.isArray(u2Data.habits) && !u2Data.habits[0].includes('Habit A') && !u2Data.habits[0].includes('script')) {
+        state.settings.u2Habits = u2Data.habits;
+      } else {
+        state.settings.u2Habits = [...DEFAULT_U2_HABITS];
+      }
+
+      if (u1Data.name && !u1Data.name.includes('<test>')) {
+        state.settings.u1Name = u1Data.name;
+      } else {
+        state.settings.u1Name = 'Adarsh';
+      }
+
+      if (u2Data.name && !u2Data.name.includes('& Co')) {
+        state.settings.u2Name = u2Data.name;
+      } else {
+        state.settings.u2Name = 'Sanjana';
+      }
+
       if (u1Data.startDate) state.settings.startDate = u1Data.startDate;
 
       saveLocalSettings();
@@ -1096,7 +1124,7 @@
     }
 
     if (dom.u1CompletedCount) dom.u1CompletedCount.textContent = `${u1CompleteCount} / 75 Days Green`;
-    if (dom.u2CompletedCount) dom.u2CompletedCount.textContent = `${u2CompletedCount} / 75 Days Green`;
+    if (dom.u2CompletedCount) dom.u2CompletedCount.textContent = `${u2CompleteCount} / 75 Days Green`;
   }
 
   function createMatrixCell(dayNum, dateStr, isDone, isPastOrToday, isSelected) {
