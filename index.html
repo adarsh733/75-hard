@@ -48,11 +48,17 @@
           <i class="fa-solid fa-bolt"></i>
         </div>
 
-        <!-- Quick Theme Switcher Icon Button -->
-        <button id="theme-toggle-btn" class="icon-btn" title="Toggle Light/Dark Theme" aria-label="Toggle Theme">
-          <i class="fa-solid fa-moon" id="theme-btn-icon"></i>
+        <!-- Notification Permission Bell Button -->
+        <button id="notif-bell-btn" class="icon-btn" title="Enable Web Push Notifications" aria-label="Enable Notifications">
+          <i class="fa-solid fa-bell" id="notif-bell-icon"></i>
         </button>
 
+        <!-- Refresh Data Button -->
+        <button id="refresh-btn" class="icon-btn" title="Refresh Latest Data" aria-label="Refresh Data">
+          <i class="fa-solid fa-rotate-right"></i>
+        </button>
+
+        <!-- Settings Gear Button -->
         <button id="open-settings-btn" class="icon-btn" aria-label="Settings">
           <i class="fa-solid fa-gear"></i>
         </button>
@@ -219,19 +225,60 @@
       <span id="chat-unread-badge" class="chat-badge hidden">0</span>
     </button>
 
+    <!-- FIRST-TIME DEVICE IDENTITY PROMPT MODAL ("WHO ARE YOU?") -->
+    <div id="first-time-identity-modal" class="modal-overlay hidden">
+      <div class="modal-card identity-prompt-card">
+        <div class="identity-prompt-header">
+          <div class="sparkle-icon">✨</div>
+          <h2>Who is using this phone?</h2>
+          <p>Select your identity once for this device:</p>
+        </div>
+
+        <div class="identity-cards-grid">
+          <!-- Card Adarsh -->
+          <div class="select-user-card" id="select-u1-card">
+            <div class="select-user-avatar">
+              <img src="adarsh.jpg" alt="Adarsh">
+            </div>
+            <h3>Adarsh</h3>
+            <span class="select-badge cyan">Adarsh's Phone</span>
+          </div>
+
+          <!-- Card Sanjana -->
+          <div class="select-user-card" id="select-u2-card">
+            <div class="select-user-avatar">
+              <img src="sanjana.jpg" alt="Sanjana">
+            </div>
+            <h3>Sanjana</h3>
+            <span class="select-badge pink">Sanjana's Phone</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- FLOATING CHAT DRAWER MODAL -->
     <div id="chat-modal" class="modal-overlay hidden">
       <div class="modal-card chat-modal-card">
         <div class="modal-header">
-          <div class="chat-header-title">
-            <i class="fa-solid fa-comments"></i> 
-            <span>Banter Chat • <span id="chat-user-indicator">Adarsh</span></span>
+          <div class="chat-header-left">
+            <div class="chat-header-title">
+              <i class="fa-solid fa-comments"></i> 
+              <span>Banter Chat</span>
+            </div>
+            
+            <!-- Fixed Device Identity Badge (No toggle buttons) -->
+            <div class="chat-device-identity-badge" id="chat-device-identity-badge">
+              <img id="chat-user-dp-img" src="adarsh.jpg" alt="User DP" class="chat-mini-dp">
+              <span id="chat-user-name-text">Adarsh</span>
+            </div>
           </div>
+
           <div class="chat-header-right">
             <span class="chat-date-pill" id="chat-date-pill">Today</span>
             <button id="close-chat-modal-btn" class="close-btn">&times;</button>
           </div>
         </div>
+        
         <div class="modal-body chat-modal-body">
           
           <div class="chat-messages-container" id="chat-messages-container">
@@ -240,14 +287,21 @@
             </div>
           </div>
 
-          <!-- Playful, Leg-Pulling Funny Banter Chips -->
+          <!-- Playful, Leg-Pulling Funny Banter Chips (Horizontal Scrollable) -->
           <div class="quick-emojis-bar">
             <button class="emoji-chip" data-msg="😏 Still in bed sleeping?">😏 Still sleeping?</button>
             <button class="emoji-chip" data-msg="🌊 Did you drown in 4L water?">🌊 Drowning in water?</button>
             <button class="emoji-chip" data-msg="🏋️ Are those 5lb weights heavy?">🏋️ 5lb weights heavy?</button>
-            <button class="emoji-chip" data-msg="📖 Reading or staring at pages?">📖 Staring at book?</button>
+            <button class="emoji-chip" data-msg="📖 Staring at same page for 1hr?">📖 Staring at book?</button>
             <button class="emoji-chip" data-msg="🥗 Sneaking cheat snacks on Day 1?">🥗 Sneaking snacks?</button>
-            <button class="emoji-chip" data-msg="🐢 Walking slower than a turtle!">🐢 Slower than a turtle!</button>
+            <button class="emoji-chip" data-msg="🐢 Walking slower than a turtle!">🐢 Slower than turtle!</button>
+            <button class="emoji-chip" data-msg="💤 Napping counts as 0 habits done!">💤 Napping = 0 done!</button>
+            <button class="emoji-chip" data-msg="🏃 Did you run 45 meters instead of 45 mins?">🏃 Ran 45 meters?</button>
+            <button class="emoji-chip" data-msg="🥦 Eating one leaf doesn't mean clean diet!">🥦 One leaf diet!</button>
+            <button class="emoji-chip" data-msg="🏆 Scoreboard says I'm winning today!">🏆 I'm winning!</button>
+            <button class="emoji-chip" data-msg="🚨 0/5 alert! Slacker detected!">🚨 Slacker alert!</button>
+            <button class="emoji-chip" data-msg="☕ Is coffee your outdoor workout?">☕ Coffee workout?</button>
+            <button class="emoji-chip" data-msg="⏰ Day is ending! Move your feet!">⏰ Move your feet!</button>
             <button class="emoji-chip" data-msg="🔥 5/5 Done! Try to keep up!">🔥 Try to keep up!</button>
             <button class="emoji-chip" data-msg="💪 Excuses don't build muscle!">💪 No excuses!</button>
           </div>
@@ -324,13 +378,21 @@
           <button id="close-nudge-modal-btn" class="close-btn">&times;</button>
         </div>
         <div class="modal-body">
+          
           <div class="settings-group">
-            <label>Quick Leg-Pulling Presets:</label>
-            <div class="nudge-presets">
+            <label>Quick Funny & Motivational Presets:</label>
+            <!-- Horizontally Scrollable Nudge Presets Bar -->
+            <div class="nudge-presets-scrollable">
               <button class="preset-btn" data-text="Wake up! Finish today's 5 habits! ⏰">⏰ Wake up!</button>
               <button class="preset-btn" data-text="Don't drown in water intake! 💧">💧 Drink Water!</button>
               <button class="preset-btn" data-text="Get off the couch and workout! 🏋️">🏋️ Get Off Couch!</button>
               <button class="preset-btn" data-text="75 Hard Champions! No slacking! 🔥">🔥 No Slacking!</button>
+              <button class="preset-btn" data-text="45 Mins won't kill you, slacker! 🏃">🏃 45 Mins Workout!</button>
+              <button class="preset-btn" data-text="Read 10 pages, not 10 words! 📖">📖 Read 10 Pages!</button>
+              <button class="preset-btn" data-text="Put down the pizza! Clean diet! 🥗">🥗 Clean Diet!</button>
+              <button class="preset-btn" data-text="Speed up! Even turtles walk faster! 🐢">🐢 Faster Than Turtle!</button>
+              <button class="preset-btn" data-text="You got this partner! Finish 5/5! 🌟">🌟 Finish 5/5!</button>
+              <button class="preset-btn" data-text="Let's make today a 100% Green Day! 💪">💪 100% Green Day!</button>
             </div>
           </div>
 
@@ -338,6 +400,7 @@
             <label for="custom-nudge-text">Or Custom Message:</label>
             <input type="text" id="custom-nudge-text" placeholder="Type custom message...">
           </div>
+
         </div>
         <div class="modal-footer">
           <button id="submit-nudge-btn" class="btn btn-primary btn-full">
@@ -366,6 +429,28 @@
               </button>
               <button type="button" class="identity-opt-btn" id="id-u2-opt" data-id-val="u2">
                 Sanjana's Phone
+              </button>
+            </div>
+          </div>
+
+          <!-- Web Push Notifications Toggle -->
+          <div class="settings-group">
+            <h4><i class="fa-solid fa-bell"></i> Push Notifications</h4>
+            <p class="help-text">Receive system banners when partner sends chat or boost:</p>
+            <button type="button" id="settings-enable-notif-btn" class="btn btn-secondary btn-full">
+              <i class="fa-solid fa-bell"></i> Request Push Notification Permission
+            </button>
+          </div>
+
+          <!-- Theme Preference Switcher (Moved into Settings) -->
+          <div class="settings-group">
+            <h4><i class="fa-solid fa-palette"></i> Visual Theme</h4>
+            <div class="theme-segmented-control">
+              <button type="button" class="theme-opt-btn active" id="theme-dark-opt" data-theme-val="dark">
+                <i class="fa-solid fa-moon"></i> Dark Mode
+              </button>
+              <button type="button" class="theme-opt-btn" id="theme-light-opt" data-theme-val="light">
+                <i class="fa-solid fa-sun"></i> Light Mode
               </button>
             </div>
           </div>
@@ -411,19 +496,6 @@
           <button type="button" id="toggle-partner-habits-btn" class="toggle-partner-btn">
             <i class="fa-solid fa-eye"></i> View Partner Habits
           </button>
-
-          <!-- Theme Preference Switcher -->
-          <div class="settings-group">
-            <h4><i class="fa-solid fa-palette"></i> Visual Theme</h4>
-            <div class="theme-segmented-control">
-              <button type="button" class="theme-opt-btn active" id="theme-dark-opt" data-theme-val="dark">
-                <i class="fa-solid fa-moon"></i> Dark Mode
-              </button>
-              <button type="button" class="theme-opt-btn" id="theme-light-opt" data-theme-val="light">
-                <i class="fa-solid fa-sun"></i> Light Mode
-              </button>
-            </div>
-          </div>
 
           <!-- Start Date -->
           <div class="settings-group">

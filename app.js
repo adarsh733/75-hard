@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   AUTOMATIC SUPABASE SYNC (SETTINGS UI CLEANUP)
+   COMPLETE SYSTEM WEB PUSH NOTIFICATION ENGINE
    ========================================== */
 
 (function () {
@@ -33,6 +33,8 @@
   const STORAGE_KEY_SETTINGS = '75hard_duo_settings';
   const STORAGE_KEY_DATA = '75hard_duo_history_data';
   const STORAGE_KEY_READ_NUDGES = '75hard_duo_read_nudges';
+  const STORAGE_KEY_DEVICE_IDENTITY = '75hard_device_identity';
+  const STORAGE_KEY_LAST_REMINDER = '75hard_last_reminder_time';
 
   let state = {
     settings: {
@@ -51,18 +53,32 @@
     readNudges: [],
     unreadChatCount: 0,
     isChatOpen: false,
-    showPartnerHabitsInSettings: false
+    showPartnerHabitsInSettings: false,
+    swRegistration: null
   };
 
   // DOM Elements
   const dom = {
     syncStatus: document.getElementById('sync-status'),
+    notifBellBtn: document.getElementById('notif-bell-btn'),
+    notifBellIcon: document.getElementById('notif-bell-icon'),
+    settingsEnableNotifBtn: document.getElementById('settings-enable-notif-btn'),
+    refreshBtn: document.getElementById('refresh-btn'),
     openSettingsBtn: document.getElementById('open-settings-btn'),
     settingsModal: document.getElementById('settings-modal'),
     closeModalBtn: document.getElementById('close-modal-btn'),
     saveSettingsBtn: document.getElementById('save-settings-btn'),
     resetDefaultsBtn: document.getElementById('reset-defaults-btn'),
     resetSupabaseBtn: document.getElementById('reset-supabase-btn'),
+
+    // First Time Identity Prompt DOM
+    firstTimeIdentityModal: document.getElementById('first-time-identity-modal'),
+    selectU1Card: document.getElementById('select-u1-card'),
+    selectU2Card: document.getElementById('select-u2-card'),
+
+    // Chat Header Fixed Device Badge
+    chatUserDpImg: document.getElementById('chat-user-dp-img'),
+    chatUserNameText: document.getElementById('chat-user-name-text'),
 
     // Security Verification Modal DOM
     securityModal: document.getElementById('security-modal'),
@@ -77,13 +93,11 @@
     u2HabitsSettingsGroup: document.getElementById('u2-habits-settings-group'),
     togglePartnerHabitsBtn: document.getElementById('toggle-partner-habits-btn'),
 
-    // Device User Identity DOM
+    // Device User Identity DOM in Settings
     idU1Opt: document.getElementById('id-u1-opt'),
     idU2Opt: document.getElementById('id-u2-opt'),
 
     // Theme Switcher DOM
-    themeToggleBtn: document.getElementById('theme-toggle-btn'),
-    themeBtnIcon: document.getElementById('theme-btn-icon'),
     themeDarkOpt: document.getElementById('theme-dark-opt'),
     themeLightOpt: document.getElementById('theme-light-opt'),
 
@@ -107,7 +121,6 @@
     chatUnreadBadge: document.getElementById('chat-unread-badge'),
     chatModal: document.getElementById('chat-modal'),
     closeChatModalBtn: document.getElementById('close-chat-modal-btn'),
-    chatUserIndicator: document.getElementById('chat-user-indicator'),
     chatDatePill: document.getElementById('chat-date-pill'),
     chatContainer: document.getElementById('chat-messages-container'),
     chatEmptyState: document.getElementById('chat-empty-state'),
@@ -182,6 +195,18 @@
     loadReadNudges();
 
     applyTheme(state.settings.theme || 'dark');
+
+    // Register Service Worker for PWAs and Push Notifications
+    registerServiceWorker();
+
+    // Auto-load device identity from localStorage if saved
+    const savedIdentity = localStorage.getItem(STORAGE_KEY_DEVICE_IDENTITY);
+    if (!savedIdentity) {
+      if (dom.firstTimeIdentityModal) dom.firstTimeIdentityModal.classList.remove('hidden');
+    } else {
+      state.settings.myUser = savedIdentity;
+    }
+
     applyIdentity(state.settings.myUser || 'u1');
 
     setupEventListeners();
@@ -189,6 +214,158 @@
 
     renderUI();
     checkPendingPopupEncouragement();
+    updateNotifBellState();
+
+    // AUTOMATICALLY REQUEST PUSH NOTIFICATION PERMISSION ON OPEN
+    autoRequestNotificationPermission();
+
+    // START SMART ACCOUNTABILITY REMINDER ENGINE
+    startAccountabilityReminderEngine();
+  }
+
+  function registerServiceWorker() {
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js')
+        .then((reg) => {
+          state.swRegistration = reg;
+          console.log('✓ Service Worker registered successfully');
+        })
+        .catch((err) => {
+          console.warn('Service Worker registration failed:', err);
+        });
+    }
+  }
+
+  function autoRequestNotificationPermission() {
+    if ('Notification' in window && Notification.permission === 'default') {
+      setTimeout(() => {
+        requestNotificationPermission();
+      }, 1000);
+    }
+  }
+
+  async function requestNotificationPermission() {
+    if (!('Notification' in window)) {
+      return false;
+    }
+
+    try {
+      const permission = await Notification.requestPermission();
+      updateNotifBellState();
+
+      if (permission === 'granted') {
+        showToast('🔔 System Push Notifications Enabled!');
+        triggerDeviceNotification('🔔 Notifications Enabled!', 'You will receive instant lock-screen & on-screen push notifications for chat, boosts, acknowledgments & reminders!', 'apple-touch-icon.png');
+        return true;
+      }
+      return false;
+    } catch (e) {
+      console.warn('Error requesting notification permission:', e);
+      return false;
+    }
+  }
+
+  function updateNotifBellState() {
+    if (!dom.notifBellIcon) return;
+    if ('Notification' in window && Notification.permission === 'granted') {
+      dom.notifBellIcon.className = 'fa-solid fa-bell';
+      if (dom.notifBellBtn) dom.notifBellBtn.style.color = 'var(--u1-color)';
+      if (dom.settingsEnableNotifBtn) {
+        dom.settingsEnableNotifBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Notifications Active';
+        dom.settingsEnableNotifBtn.className = 'btn btn-secondary btn-full active';
+      }
+    } else {
+      dom.notifBellIcon.className = 'fa-regular fa-bell';
+      if (dom.notifBellBtn) dom.notifBellBtn.style.color = 'var(--text-main)';
+    }
+  }
+
+  // SYSTEM NOTIFICATION BANNER ENGINE (LOCK SCREEN & SCREEN DROP-DOWN BANNERS)
+  function triggerDeviceNotification(title, bodyText, iconPath) {
+    if (!('Notification' in window) || Notification.permission !== 'granted') {
+      return;
+    }
+
+    const options = {
+      body: bodyText,
+      icon: iconPath || 'apple-touch-icon.png',
+      badge: 'icon.png',
+      vibrate: [300, 100, 300, 100, 300],
+      tag: '75hard_push_' + Date.now(),
+      renotify: true,
+      requireInteraction: false,
+      data: { url: '/' }
+    };
+
+    if (state.swRegistration && state.swRegistration.showNotification) {
+      state.swRegistration.showNotification(title, options);
+    } else {
+      try {
+        new Notification(title, options);
+      } catch (e) {
+        console.warn('Native Notification failed:', e);
+      }
+    }
+  }
+
+  // SMART ACCOUNTABILITY REMINDER ENGINE FOR INCOMPLETE TASKS
+  function startAccountabilityReminderEngine() {
+    checkAndTriggerTaskReminders();
+    
+    // Check every 30 minutes
+    setInterval(() => {
+      checkAndTriggerTaskReminders();
+    }, 30 * 60 * 1000);
+  }
+
+  function checkAndTriggerTaskReminders() {
+    const todayStr = formatDateToYYYYMMDD(new Date());
+    const entry = getDayEntry(todayStr);
+
+    const myUserKey = state.settings.myUser || 'u1';
+    const myTicks = entry[myUserKey] || [false, false, false, false, false];
+    const completedCount = myTicks.filter(Boolean).length;
+
+    // If already completed 5/5 today, no reminder needed
+    if (completedCount === 5) return;
+
+    // Check last reminder time to avoid spamming (limit to once every 3 hours)
+    const lastReminderTime = parseInt(localStorage.getItem(STORAGE_KEY_LAST_REMINDER) || '0', 10);
+    const now = Date.now();
+    const THREE_HOURS_MS = 3 * 60 * 60 * 1000;
+
+    if (now - lastReminderTime < THREE_HOURS_MS) {
+      return;
+    }
+
+    const isU1 = (myUserKey === 'u1');
+    const myName = isU1 ? (state.settings.u1Name || 'Adarsh') : (state.settings.u2Name || 'Sanjana');
+    const partnerName = isU1 ? (state.settings.u2Name || 'Sanjana') : (state.settings.u1Name || 'Adarsh');
+    const myDp = isU1 ? 'adarsh.jpg' : 'sanjana.jpg';
+
+    // Tailored customized accountability reminders by name and missing count
+    const adarshReminders = [
+      `Hey ${myName}! 🏋️ You have ${5 - completedCount} habits remaining! Don't let ${partnerName} win today!`,
+      `${myName}, you're at ${completedCount}/5! Drink your water & get moving before ${partnerName} calls you out! 💧`,
+      `Day is slipping away ${myName}! Finish your ${5 - completedCount} habits! 🔥`,
+      `${myName}! 📖 Read those pages & finish your workouts or face the banter!`,
+      `Accountability Check ${myName}! ${completedCount}/5 habits done. Time to crush the rest!`
+    ];
+
+    const sanjanaReminders = [
+      `Hey ${myName}! 🧘 Time for your workout! ${partnerName} is watching the scoreboard!`,
+      `${myName}, you're at ${completedCount}/5! Finish your habits & stay ahead of ${partnerName}! 💪`,
+      `Don't slack now ${myName}! ${5 - completedCount} habits left for a 100% Green Day! 🔥`,
+      `${myName}! 💧 Hydration & reading check! Let's get to 5/5!`,
+      `Accountability Boost for ${myName}! ${completedCount}/5 complete. Let's finish strong!`
+    ];
+
+    const pool = isU1 ? adarshReminders : sanjanaReminders;
+    const randomMsg = pool[Math.floor(Math.random() * pool.length)];
+
+    // TRIGGER SYSTEM PUSH NOTIFICATION
+    triggerDeviceNotification(`🔥 75 Hard Check: ${myName} (${completedCount}/5)`, randomMsg, myDp);
+    localStorage.setItem(STORAGE_KEY_LAST_REMINDER, now.toString());
   }
 
   function loadLocalSettings() {
@@ -210,6 +387,7 @@
   function saveLocalSettings() {
     try {
       localStorage.setItem(STORAGE_KEY_SETTINGS, JSON.stringify(state.settings));
+      localStorage.setItem(STORAGE_KEY_DEVICE_IDENTITY, state.settings.myUser);
     } catch (e) {
       console.warn('Could not save settings', e);
     }
@@ -220,13 +398,9 @@
     document.body.setAttribute('data-theme', themeName);
 
     if (themeName === 'light') {
-      if (dom.themeBtnIcon) dom.themeBtnIcon.className = 'fa-solid fa-sun';
-      if (dom.themeToggleBtn) dom.themeToggleBtn.setAttribute('title', 'Switch to Dark Mode');
       if (dom.themeLightOpt) dom.themeLightOpt.classList.add('active');
       if (dom.themeDarkOpt) dom.themeDarkOpt.classList.remove('active');
     } else {
-      if (dom.themeBtnIcon) dom.themeBtnIcon.className = 'fa-solid fa-moon';
-      if (dom.themeToggleBtn) dom.themeToggleBtn.setAttribute('title', 'Switch to Light Mode');
       if (dom.themeDarkOpt) dom.themeDarkOpt.classList.add('active');
       if (dom.themeLightOpt) dom.themeLightOpt.classList.remove('active');
     }
@@ -234,14 +408,18 @@
 
   function applyIdentity(userKey) {
     state.settings.myUser = userKey;
+    localStorage.setItem(STORAGE_KEY_DEVICE_IDENTITY, userKey);
+
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
-    const activeName = (userKey === 'u1') ? u1Name : u2Name;
+    const isU1 = (userKey === 'u1');
+    const activeName = isU1 ? u1Name : u2Name;
 
-    if (dom.chatUserIndicator) {
-      dom.chatUserIndicator.textContent = activeName;
-    }
+    // Chat Header Fixed Device Badge
+    if (dom.chatUserDpImg) dom.chatUserDpImg.src = isU1 ? 'adarsh.jpg' : 'sanjana.jpg';
+    if (dom.chatUserNameText) dom.chatUserNameText.textContent = activeName;
 
+    // Settings Segmented Control Buttons
     if (userKey === 'u1') {
       if (dom.idU1Opt) dom.idU1Opt.classList.add('active');
       if (dom.idU2Opt) dom.idU2Opt.classList.remove('active');
@@ -250,6 +428,7 @@
       if (dom.idU1Opt) dom.idU1Opt.classList.remove('active');
     }
 
+    // Auto-filter settings menu based on who is using the device
     if (!state.showPartnerHabitsInSettings) {
       if (userKey === 'u1') {
         if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.remove('hidden');
@@ -262,6 +441,8 @@
       if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.remove('hidden');
       if (dom.u2HabitsSettingsGroup) dom.u2HabitsSettingsGroup.classList.remove('hidden');
     }
+
+    renderBanterChat();
   }
 
   function loadLocalHistory() {
@@ -300,7 +481,7 @@
     } catch (e) {}
   }
 
-  // SUPABASE REALTIME INITIALIZATION
+  // SUPABASE REALTIME INITIALIZATION & LIVE POSTGRES CHANNEL
   async function initSupabase() {
     const targetUrl = GET_SUPABASE_URL();
     const targetKey = GET_SUPABASE_KEY();
@@ -311,11 +492,13 @@
         state.isOnline = true;
         updateSyncStatusBadge(true);
 
-        // Initial fetch
+        // Initial fetch of habit_history
         const { data, error } = await state.supabaseClient.from('habit_history').select('*');
         if (data && Array.isArray(data)) {
           data.forEach(row => {
-            if (row.date) {
+            if (row.date === '_APP_SETTINGS_') {
+              applySyncedAppSettings(row);
+            } else if (row.date) {
               const u1Payload = unpackPayload(row.u1_ticks);
               const u2Payload = unpackPayload(row.u2_ticks);
 
@@ -332,36 +515,105 @@
           checkPendingPopupEncouragement();
         }
 
-        // Subscribe to live Postgres changes across devices
+        // Subscribe to live Postgres changes across both devices
         state.supabaseClient
           .channel('realtime:habit_history')
           .on('postgres_changes', { event: '*', schema: 'public', table: 'habit_history' }, (payload) => {
             if (payload.new && payload.new.date) {
-              const prevChatCount = (state.history[payload.new.date]?.chat || []).length;
+              const dateStr = payload.new.date;
+              const u1Name = state.settings.u1Name || 'Adarsh';
+              const u2Name = state.settings.u2Name || 'Sanjana';
+
+              // PUSH NOTIFICATION FOR APP SETTINGS SYNC
+              if (dateStr === '_APP_SETTINGS_') {
+                applySyncedAppSettings(payload.new);
+                saveLocalSettings();
+                renderUI();
+                const partnerName = state.settings.myUser === 'u1' ? u2Name : u1Name;
+                const partnerDp = state.settings.myUser === 'u1' ? 'sanjana.jpg' : 'adarsh.jpg';
+
+                triggerDeviceNotification(`⚙️ Settings Synced`, `${partnerName} updated habit names or challenge settings!`, partnerDp);
+                showToast('⚙️ Habit names updated from partner!');
+                return;
+              }
+
+              const prevChatCount = (state.history[dateStr]?.chat || []).length;
               
               const u1Payload = unpackPayload(payload.new.u1_ticks);
               const u2Payload = unpackPayload(payload.new.u2_ticks);
 
-              const newChatList = u1Payload.chat || u2Payload.chat || [];
+              const partnerUserKey = state.settings.myUser === 'u1' ? 'u2' : 'u1';
+              const prevPartnerCount = (state.history[dateStr]?.[partnerUserKey] || []).filter(Boolean).length;
+              const newPartnerCount = (partnerUserKey === 'u1' ? u1Payload.ticks : u2Payload.ticks).filter(Boolean).length;
 
-              state.history[payload.new.date] = {
+              const newChatList = u1Payload.chat || u2Payload.chat || [];
+              const newNudge = u1Payload.nudge || u2Payload.nudge || null;
+
+              state.history[dateStr] = {
                 u1: u1Payload.ticks,
                 u2: u2Payload.ticks,
                 chat: newChatList,
-                nudge: u1Payload.nudge || u2Payload.nudge || null
+                nudge: newNudge
               };
               
               saveLocalHistory();
               renderUI();
               checkPendingPopupEncouragement();
 
-              if (newChatList.length > prevChatCount && !state.isChatOpen) {
+              const todayStr = formatDateToYYYYMMDD(new Date());
+
+              // TRIGGER SYSTEM PUSH NOTIFICATION FOR PARTNER 100% GREEN DAY (5/5 HABITS DONE)
+              if (newPartnerCount === 5 && prevPartnerCount < 5 && dateStr === todayStr) {
+                const partnerName = partnerUserKey === 'u1' ? u1Name : u2Name;
+                const partnerDp = partnerUserKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
+
+                triggerDeviceNotification(`🌟 ${partnerName} finished 5/5 Habits!`, `${partnerName} just achieved a 100% Green Day! Hurry up and catch up! 🔥`, partnerDp);
+                showToast(`🌟 ${partnerName} finished 5/5 Habits!`);
+              }
+
+              // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES
+              if (newChatList.length > prevChatCount) {
                 const latestMsg = newChatList[newChatList.length - 1];
                 if (latestMsg && latestMsg.sender !== state.settings.myUser) {
-                  state.unreadChatCount += (newChatList.length - prevChatCount);
-                  updateUnreadChatBadge();
-                  showToast(`💬 New banter from partner!`);
-                  if (navigator.vibrate) navigator.vibrate([100, 50, 100]);
+                  const senderName = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? u1Name : u2Name;
+                  const senderDp = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
+
+                  // Trigger System Push Notification Banner on phone lock screen / top bar
+                  triggerDeviceNotification(`💬 Banter from ${senderName}`, latestMsg.text, senderDp);
+
+                  if (!state.isChatOpen) {
+                    state.unreadChatCount += (newChatList.length - prevChatCount);
+                    updateUnreadChatBadge();
+                    showToast(`💬 New banter from ${senderName}!`);
+                  } else {
+                    renderBanterChat();
+                  }
+
+                  if (navigator.vibrate) navigator.vibrate([200, 100, 200]);
+                }
+              }
+
+              // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW ENCOURAGEMENT BOOST
+              if (newNudge && newNudge.id && newNudge.sender !== state.settings.myUser && !state.readNudges.includes(newNudge.id)) {
+                const senderName = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? u1Name : u2Name;
+                const senderDp = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
+
+                triggerDeviceNotification(`❤️ Boost from ${senderName}!`, newNudge.text, senderDp);
+              }
+
+              // TRIGGER SYSTEM PUSH NOTIFICATION WHEN PARTNER ACKNOWLEDGES A BOOST
+              if (newNudge && newNudge.acknowledged && newNudge.sender === state.settings.myUser && newNudge.ackSender !== state.settings.myUser) {
+                const ackKey = `ack_${newNudge.id}`;
+                if (!state.readNudges.includes(ackKey)) {
+                  state.readNudges.push(ackKey);
+                  saveReadNudges();
+
+                  const partnerName = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? u1Name : u2Name;
+                  const partnerDp = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
+
+                  triggerDeviceNotification(`❤️ Boost Acknowledged by ${partnerName}!`, `${partnerName} tapped "Thanks! Let's Crush It!" 💪`, partnerDp);
+                  showToast(`❤️ ${partnerName} acknowledged your boost!`);
+                  if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
                 }
               }
             }
@@ -374,6 +626,49 @@
       }
     } else {
       updateSyncStatusBadge(false);
+    }
+  }
+
+  function applySyncedAppSettings(row) {
+    if (!row || !row.u1_ticks || !row.u2_ticks) return;
+    try {
+      const u1Data = typeof row.u1_ticks === 'string' ? JSON.parse(row.u1_ticks) : row.u1_ticks;
+      const u2Data = typeof row.u2_ticks === 'string' ? JSON.parse(row.u2_ticks) : row.u2_ticks;
+
+      if (u1Data.habits && Array.isArray(u1Data.habits)) state.settings.u1Habits = u1Data.habits;
+      if (u2Data.habits && Array.isArray(u2Data.habits)) state.settings.u2Habits = u2Data.habits;
+      if (u1Data.name) state.settings.u1Name = u1Data.name;
+      if (u2Data.name) state.settings.u2Name = u2Data.name;
+      if (u1Data.startDate) state.settings.startDate = u1Data.startDate;
+
+      saveLocalSettings();
+    } catch (e) {
+      console.warn('Error applying synced settings:', e);
+    }
+  }
+
+  async function syncAppSettingsToSupabase() {
+    if (!state.supabaseClient) return;
+    try {
+      const u1Payload = {
+        habits: state.settings.u1Habits,
+        name: state.settings.u1Name,
+        startDate: state.settings.startDate
+      };
+      const u2Payload = {
+        habits: state.settings.u2Habits,
+        name: state.settings.u2Name,
+        startDate: state.settings.startDate
+      };
+
+      await state.supabaseClient.from('habit_history').upsert({
+        date: '_APP_SETTINGS_',
+        u1_ticks: u1Payload,
+        u2_ticks: u2Payload,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.error('Error syncing app settings to Supabase:', e);
     }
   }
 
@@ -619,6 +914,7 @@
     }
   }
 
+  // RENDER REALTIME BANTER CHAT MESSAGES
   function renderBanterChat() {
     const entry = getDayEntry(state.activeDateStr);
     const chatList = entry.chat || [];
@@ -636,20 +932,27 @@
 
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
+    const myDeviceUser = state.settings.myUser || 'u1';
 
     chatList.forEach(msg => {
-      const isU1 = msg.sender === 'u1' || msg.sender === u1Name;
-      const senderDisplayName = isU1 ? u1Name : u2Name;
+      const isMsgFromU1 = (msg.sender === 'u1' || msg.sender === u1Name);
+      const msgSenderKey = isMsgFromU1 ? 'u1' : 'u2';
+      const senderDisplayName = isMsgFromU1 ? u1Name : u2Name;
+      const avatarSrc = isMsgFromU1 ? 'adarsh.jpg' : 'sanjana.jpg';
+
+      // Check if message was sent by the current device user or partner
+      const isMyOwnMessage = (msgSenderKey === myDeviceUser);
 
       const wrapEl = document.createElement('div');
-      wrapEl.className = `chat-bubble-wrap ${isU1 ? 'u1-msg' : 'u2-msg'}`;
+      wrapEl.className = `chat-bubble-wrap ${isMyOwnMessage ? 'u-sent-msg' : 'u-received-msg'}`;
 
       wrapEl.innerHTML = `
         <div class="chat-meta">
-          <span>${escapeHtml(senderDisplayName)}</span>
+          <img src="${avatarSrc}" class="chat-avatar-mini" alt="${escapeHtml(senderDisplayName)}">
+          <span class="chat-sender-name">${escapeHtml(senderDisplayName)}</span>
           <span class="chat-time">• ${escapeHtml(msg.time || '')}</span>
         </div>
-        <div class="chat-bubble">
+        <div class="chat-bubble ${msgSenderKey}-accent">
           <span class="chat-text">${escapeHtml(msg.text)}</span>
         </div>
       `;
@@ -710,9 +1013,20 @@
     if (dom.encouragementPopup) dom.encouragementPopup.classList.remove('hidden');
 
     if (dom.encDismissBtn) {
-      dom.encDismissBtn.onclick = () => {
+      dom.encDismissBtn.onclick = async () => {
         state.readNudges.push(nudge.id);
         saveReadNudges();
+
+        // Mark nudge object with acknowledged flag & sync to Supabase!
+        if (entry.nudge) {
+          entry.nudge.acknowledged = true;
+          entry.nudge.ackSender = state.settings.myUser;
+          entry.nudge.ackTime = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        saveLocalHistory();
+        await syncRowToSupabase(todayStr);
+
         if (dom.encouragementPopup) dom.encouragementPopup.classList.add('hidden');
         showToast(`❤️ Boost acknowledged!`);
       };
@@ -733,7 +1047,10 @@
       sender: senderKey,
       senderName: senderName,
       text: messageText,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      acknowledged: false,
+      ackSender: null,
+      ackTime: null
     };
 
     entry.nudge = nudgeObj;
@@ -779,7 +1096,7 @@
     }
 
     if (dom.u1CompletedCount) dom.u1CompletedCount.textContent = `${u1CompleteCount} / 75 Days Green`;
-    if (dom.u2CompletedCount) dom.u2CompletedCount.textContent = `${u2CompleteCount} / 75 Days Green`;
+    if (dom.u2CompletedCount) dom.u2CompletedCount.textContent = `${u2CompletedCount} / 75 Days Green`;
   }
 
   function createMatrixCell(dayNum, dateStr, isDone, isPastOrToday, isSelected) {
@@ -805,6 +1122,51 @@
   }
 
   function setupEventListeners() {
+    // Push Notification Bell Button Handlers
+    if (dom.notifBellBtn) {
+      dom.notifBellBtn.addEventListener('click', requestNotificationPermission);
+    }
+    if (dom.settingsEnableNotifBtn) {
+      dom.settingsEnableNotifBtn.addEventListener('click', requestNotificationPermission);
+    }
+
+    // First-Time Identity Modal Choice Cards
+    if (dom.selectU1Card) {
+      dom.selectU1Card.addEventListener('click', () => {
+        applyIdentity('u1');
+        saveLocalSettings();
+        if (dom.firstTimeIdentityModal) dom.firstTimeIdentityModal.classList.add('hidden');
+        showToast('👤 Device Identity set to Adarsh!');
+        requestNotificationPermission();
+      });
+    }
+
+    if (dom.selectU2Card) {
+      dom.selectU2Card.addEventListener('click', () => {
+        applyIdentity('u2');
+        saveLocalSettings();
+        if (dom.firstTimeIdentityModal) dom.firstTimeIdentityModal.classList.add('hidden');
+        showToast('👤 Device Identity set to Sanjana!');
+        requestNotificationPermission();
+      });
+    }
+
+    // Refresh Data Button
+    if (dom.refreshBtn) {
+      dom.refreshBtn.addEventListener('click', async () => {
+        const iconEl = dom.refreshBtn.querySelector('i');
+        if (iconEl) iconEl.classList.add('fa-spin');
+        
+        await initSupabase();
+        renderUI();
+
+        setTimeout(() => {
+          if (iconEl) iconEl.classList.remove('fa-spin');
+          showToast('🔄 Refreshed latest data!');
+        }, 500);
+      });
+    }
+
     if (dom.prevDayBtn) {
       dom.prevDayBtn.addEventListener('click', () => {
         const current = parseYYYYMMDD(state.activeDateStr);
@@ -843,7 +1205,7 @@
       });
     }
 
-    // Device Owner Identity Switchers
+    // Device Owner Identity Switchers in Settings
     if (dom.idU1Opt) {
       dom.idU1Opt.addEventListener('click', () => {
         applyIdentity('u1');
@@ -859,15 +1221,6 @@
     }
 
     // Theme Switchers
-    if (dom.themeToggleBtn) {
-      dom.themeToggleBtn.addEventListener('click', () => {
-        const nextTheme = state.settings.theme === 'dark' ? 'light' : 'dark';
-        applyTheme(nextTheme);
-        saveLocalSettings();
-        showToast(`Switched to ${nextTheme === 'dark' ? 'Dark' : 'Light'} Mode`);
-      });
-    }
-
     if (dom.themeDarkOpt) {
       dom.themeDarkOpt.addEventListener('click', () => {
         applyTheme('dark');
@@ -1001,8 +1354,9 @@
   async function confirmSecurityReset() {
     const rawVal = dom.securityPhoneInput ? dom.securityPhoneInput.value : '';
     const cleanDigits = rawVal.replace(/\D/g, '');
+    const last10Digits = cleanDigits.slice(-10);
 
-    if (cleanDigits === MASTER_SECURITY_PHONE) {
+    if (last10Digits === MASTER_SECURITY_PHONE) {
       try {
         state.history = {};
         saveLocalHistory();
@@ -1098,11 +1452,11 @@
       }
 
       saveLocalSettings();
-      closeSettingsModal();
+      await syncAppSettingsToSupabase();
 
-      await initSupabase();
+      closeSettingsModal();
       renderUI();
-      showToast('Settings saved!');
+      showToast('⚙️ Settings saved & synced to partner!');
     } catch (err) {
       console.error('Error saving settings:', err);
       closeSettingsModal();
@@ -1120,6 +1474,7 @@
       applyTheme('dark');
       applyIdentity('u1');
       saveLocalSettings();
+      syncAppSettingsToSupabase();
       openSettingsModal();
       renderUI();
     }
