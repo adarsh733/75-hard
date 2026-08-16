@@ -573,6 +573,7 @@
           }
         });
         saveLocalHistory();
+        renderUI();
         checkPendingPopupEncouragement();
       }
 
@@ -1088,21 +1089,28 @@
     const nudge = entry.nudge;
     if (!nudge.id) return;
 
-    if (nudge.sender === state.settings.myUser) return;
-    if (state.readNudges.includes(nudge.id)) return;
-
+    const myUser = state.settings.myUser || 'u1';
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
 
-    const isFromU1 = nudge.sender === 'u1' || nudge.sender === u1Name;
-    const senderName = isFromU1 ? u1Name : u2Name;
-    const senderDp = isFromU1 ? 'adarsh.jpg' : 'sanjana.jpg';
+    const isSenderU1 = (nudge.sender === 'u1' || nudge.sender === u1Name);
+    const isMeU1 = (myUser === 'u1' || myUser === u1Name);
+
+    // Suppress popup ONLY if sent by myself
+    if (isSenderU1 === isMeU1) return;
+    if (state.readNudges.includes(nudge.id)) return;
+
+    const senderName = isSenderU1 ? u1Name : u2Name;
+    const senderDp = isSenderU1 ? 'adarsh.jpg' : 'sanjana.jpg';
 
     if (dom.encSenderDp) dom.encSenderDp.src = senderDp;
     if (dom.encTitle) dom.encTitle.textContent = `${senderName} sent you a boost!`;
     if (dom.encMessage) dom.encMessage.textContent = `"${nudge.text}"`;
 
     if (dom.encouragementPopup) dom.encouragementPopup.classList.remove('hidden');
+
+    // Also trigger system push notification banner if app was opened from locked state!
+    triggerDeviceNotification(`❤️ Boost from ${senderName}!`, nudge.text, senderDp);
 
     if (dom.encDismissBtn) {
       dom.encDismissBtn.onclick = async () => {
