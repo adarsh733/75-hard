@@ -1,4 +1,4 @@
-const CACHE_NAME = '75hard-duo-v4';
+const CACHE_NAME = '75hard-duo-v5';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
@@ -72,14 +72,20 @@ self.addEventListener('push', (event) => {
     }
   }
 
-  const title = data.title || '75 Hard Duo';
+  const originUrl = self.location.origin;
+  let iconUrl = data.icon || 'sanjana.jpg';
+  if (!iconUrl.startsWith('http')) {
+    iconUrl = `${originUrl}/${iconUrl}`;
+  }
+
+  const title = data.title || 'Notification';
   const options = {
     body: data.body || '',
-    icon: data.icon || 'apple-touch-icon.png',
-    badge: data.badge || 'icon.png',
-    image: data.image || undefined,
+    icon: iconUrl,
+    badge: iconUrl,
+    image: iconUrl,
     vibrate: [300, 100, 300, 100, 300],
-    tag: '75hard_lockscreen_push_' + Date.now(),
+    tag: 'duo_push_' + Date.now(),
     renotify: true,
     requireInteraction: true,
     data: { url: '/' }

@@ -343,6 +343,9 @@
         const subData = typeof partnerPayload === 'string' ? JSON.parse(partnerPayload) : partnerPayload;
 
         if (subData && subData.sub) {
+          const originUrl = window.location.origin;
+          const fullDpUrl = senderDp ? (senderDp.startsWith('http') ? senderDp : `${originUrl}/${senderDp}`) : `${originUrl}/sanjana.jpg`;
+
           fetch('/.netlify/functions/push', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -350,9 +353,9 @@
               subscription: subData.sub,
               title: title,
               body: bodyText,
-              icon: senderDp || 'apple-touch-icon.png',
-              badge: senderDp || 'icon.png',
-              image: senderDp || undefined
+              icon: fullDpUrl,
+              badge: fullDpUrl,
+              image: fullDpUrl
             })
           }).catch(e => console.warn('Dispatch VAPID error:', e));
         }
@@ -382,7 +385,7 @@
       if (permission === 'granted') {
         showToast('🔔 Lock-Screen Push Notifications Enabled!');
         registerVapidPushSubscription();
-        triggerDeviceNotification('Notifications Active 🔔', 'You will receive instant lock-screen push notifications for chat, boosts & reminders with profile photos!', 'apple-touch-icon.png');
+        triggerDeviceNotification('Notifications Active 🔔', 'Instant lock-screen alerts enabled for chat, boosts & reminders with profile photos!', 'apple-touch-icon.png');
         return true;
       }
       return false;
@@ -413,7 +416,8 @@
       return;
     }
 
-    const dpUrl = senderDp || 'apple-touch-icon.png';
+    const originUrl = window.location.origin;
+    const dpUrl = senderDp ? (senderDp.startsWith('http') ? senderDp : `${originUrl}/${senderDp}`) : `${originUrl}/apple-touch-icon.png`;
 
     const options = {
       body: bodyText,
@@ -703,7 +707,7 @@
               const partnerName = state.settings.myUser === 'u1' ? u2Name : u1Name;
               const partnerDp = state.settings.myUser === 'u1' ? 'sanjana.jpg' : 'adarsh.jpg';
 
-              triggerDeviceNotification(`Settings Synced ⚙️`, `${partnerName} updated habit names or challenge settings!`, partnerDp);
+              triggerDeviceNotification(`${partnerName} updated settings ⚙️`, `Habit names or challenge settings updated!`, partnerDp);
               showToast('⚙️ Habit names updated from partner!');
               return;
             }
@@ -738,19 +742,19 @@
               const partnerName = partnerUserKey === 'u1' ? u1Name : u2Name;
               const partnerDp = partnerUserKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
 
-              triggerDeviceNotification(`${partnerName} finished 5/5 Habits! 🌟`, `${partnerName} just achieved a 100% Green Day! Hurry up and catch up! 🔥`, partnerDp);
+              triggerDeviceNotification(`${partnerName} completed 5/5 habits! 🌟`, `100% Green Day achieved! Hurry up and catch up! 🔥`, partnerDp);
               showToast(`🌟 ${partnerName} finished 5/5 Habits!`);
             }
 
-            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES WITH CLEAN SENDER TITLE & SENDER PHOTO
+            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES ("Sanjana sent a message")
             if (newChatList.length > prevChatCount) {
               const latestMsg = newChatList[newChatList.length - 1];
               if (latestMsg && latestMsg.sender !== state.settings.myUser) {
                 const senderName = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? u1Name : u2Name;
                 const senderDp = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
 
-                // CLEAN TITLE: "Sanjana" or "Adarsh" with Profile DP icon
-                triggerDeviceNotification(senderName, latestMsg.text, senderDp);
+                // CLEAN FORMATTED TITLE: "Sanjana sent a message" or "Adarsh sent a message"
+                triggerDeviceNotification(`${senderName} sent a message`, latestMsg.text, senderDp);
 
                 if (!state.isChatOpen) {
                   state.unreadChatCount += (newChatList.length - prevChatCount);
@@ -764,12 +768,12 @@
               }
             }
 
-            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW ENCOURAGEMENT BOOST
+            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW ENCOURAGEMENT BOOST ("Sanjana sent an encouragement")
             if (newNudge && newNudge.id && newNudge.sender !== state.settings.myUser && !state.readNudges.includes(newNudge.id)) {
               const senderName = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? u1Name : u2Name;
               const senderDp = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
 
-              triggerDeviceNotification(`${senderName} Boost ❤️`, newNudge.text, senderDp);
+              triggerDeviceNotification(`${senderName} sent an encouragement`, newNudge.text, senderDp);
             }
 
             // TRIGGER SYSTEM PUSH NOTIFICATION WHEN PARTNER ACKNOWLEDGES A BOOST
@@ -782,7 +786,7 @@
                 const partnerName = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? u1Name : u2Name;
                 const partnerDp = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
 
-                triggerDeviceNotification(`${partnerName} ❤️`, `Acknowledged your boost! "Thanks! Let's Crush It!" 💪`, partnerDp);
+                triggerDeviceNotification(`${partnerName} acknowledged your boost ❤️`, `Tapped "Thanks! Let's Crush It!" 💪`, partnerDp);
                 showToast(`❤️ ${partnerName} acknowledged your boost!`);
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
               }
@@ -1190,8 +1194,8 @@
 
     await syncRowToSupabase(state.activeDateStr);
 
-    // Dispatch Native OS Lock-Screen Push Alert to Partner!
-    dispatchVapidLockscreenPush(partnerKey, senderDisplayName, text.trim(), senderDp);
+    // Dispatch Native OS Lock-Screen Push Alert to Partner ("Sanjana sent a message")
+    dispatchVapidLockscreenPush(partnerKey, `${senderDisplayName} sent a message`, text.trim(), senderDp);
   }
 
   function checkPendingPopupEncouragement() {
@@ -1218,13 +1222,13 @@
     const senderDp = isSenderU1 ? 'adarsh.jpg' : 'sanjana.jpg';
 
     if (dom.encSenderDp) dom.encSenderDp.src = senderDp;
-    if (dom.encTitle) dom.encTitle.textContent = `${senderName} sent you a boost!`;
+    if (dom.encTitle) dom.encTitle.textContent = `${senderName} sent an encouragement`;
     if (dom.encMessage) dom.encMessage.textContent = `"${nudge.text}"`;
 
     if (dom.encouragementPopup) dom.encouragementPopup.classList.remove('hidden');
 
-    // Also trigger clean push notification banner with sender's DP!
-    triggerDeviceNotification(`${senderName} Boost ❤️`, nudge.text, senderDp);
+    // Trigger push notification banner ("Sanjana sent an encouragement")
+    triggerDeviceNotification(`${senderName} sent an encouragement`, nudge.text, senderDp);
 
     if (dom.encDismissBtn) {
       dom.encDismissBtn.onclick = async () => {
@@ -1276,8 +1280,8 @@
 
     showToast(`❤️ Boost sent to ${senderKey === 'u1' ? u2Name : u1Name}!`);
 
-    // Dispatch Native OS Lock-Screen Push Alert to Partner!
-    dispatchVapidLockscreenPush(partnerKey, `${senderName} Boost ❤️`, messageText, senderDp);
+    // Dispatch Native OS Lock-Screen Push Alert to Partner ("Sanjana sent an encouragement")
+    dispatchVapidLockscreenPush(partnerKey, `${senderName} sent an encouragement`, messageText, senderDp);
   }
 
   function renderIndividualMatrices() {
