@@ -1,37 +1,34 @@
-/* ==========================================
-   75 HARD DUO - SERVICE WORKER & PUSH NOTIFICATIONS
-   NETWORK-FIRST SERVING FOR LIVE CODE UPDATES
-   ========================================== */
-
-const CACHE_NAME = '75hard-duo-v3';
+const CACHE_NAME = '75hard-duo-v4';
 const ASSETS_TO_CACHE = [
   '/',
   '/index.html',
   '/styles.css',
   '/app.js',
   '/config.js',
+  '/manifest.json',
   '/icon.png',
+  '/icon-192.png',
   '/apple-touch-icon.png',
   '/adarsh.jpg',
-  '/sanjana.jpg',
-  '/manifest.json'
+  '/sanjana.jpg'
 ];
 
 self.addEventListener('install', (event) => {
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
       return cache.addAll(ASSETS_TO_CACHE);
-    }).then(() => self.skipWaiting())
+    })
   );
 });
 
 self.addEventListener('activate', (event) => {
   event.waitUntil(
-    caches.keys().then((keys) => {
+    caches.keys().then((cacheNames) => {
       return Promise.all(
-        keys.map((key) => {
-          if (key !== CACHE_NAME) {
-            return caches.delete(key);
+        cacheNames.map((cache) => {
+          if (cache !== CACHE_NAME) {
+            return caches.delete(cache);
           }
         })
       );
@@ -39,59 +36,64 @@ self.addEventListener('activate', (event) => {
   );
 });
 
-// Network-First for JS, CSS, and HTML files so code updates arrive instantly!
+// Network-First strategy for application logic & assets
 self.addEventListener('fetch', (event) => {
-  const url = event.request.url;
+  if (event.request.method !== 'GET') return;
 
-  if (event.request.mode === 'navigate' || url.includes('/rest/v1/') || url.endsWith('.js') || url.endsWith('.css') || url.endsWith('.html')) {
-    event.respondWith(
-      fetch(event.request).then((networkResponse) => {
-        return networkResponse;
-      }).catch(() => caches.match(event.request))
-    );
-    return;
-  }
+  const url = new URL(event.request.url);
   
-  event.respondWith(
-    caches.match(event.request).then((cachedResponse) => {
-      return cachedResponse || fetch(event.request);
-    })
-  );
+  if (url.origin === location.origin) {
+    event.respondWith(
+      fetch(event.request)
+        .then((networkResponse) => {
+          if (networkResponse && networkResponse.status === 200) {
+            const responseToCache = networkResponse.clone();
+            caches.open(CACHE_NAME).then((cache) => {
+              cache.put(event.request, responseToCache);
+            });
+          }
+          return networkResponse;
+        })
+        .catch(() => {
+          return caches.match(event.request);
+        })
+    );
+  }
 });
 
-// Handle Push Events from Web Push Service Worker
+// NATIVE OS LOCK-SCREEN WEB PUSH EVENT LISTENER
 self.addEventListener('push', (event) => {
   let data = {};
   if (event.data) {
     try {
       data = event.data.json();
     } catch (e) {
-      data = { body: event.data.text() };
+      data = { title: '75 Hard Alert', body: event.data.text() };
     }
   }
 
   const title = data.title || '75 Hard Duo';
   const options = {
-    body: data.body || 'New activity from your partner!',
-    icon: data.icon || '/apple-touch-icon.png',
-    badge: '/icon.png',
+    body: data.body || '',
+    icon: data.icon || 'apple-touch-icon.png',
+    badge: data.badge || 'icon.png',
+    image: data.image || undefined,
     vibrate: [300, 100, 300, 100, 300],
-    tag: '75hard_msg_' + Date.now(),
+    tag: '75hard_lockscreen_push_' + Date.now(),
     renotify: true,
-    requireInteraction: false,
+    requireInteraction: true,
     data: { url: '/' }
   };
 
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
-// Handle Notification Banner Taps (Opens app directly to screen)
+// Notification click handler
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();
-
   event.waitUntil(
     clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientList) => {
-      for (let client of clientList) {
+      for (const client of clientList) {
         if (client.url && 'focus' in client) {
           return client.focus();
         }

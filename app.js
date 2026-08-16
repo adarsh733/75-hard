@@ -1,6 +1,6 @@
 /* ==========================================
    75 HARD DUO - ADARSH & SANJANA LOGIC ENGINE
-   COMPLETE SYSTEM WEB PUSH NOTIFICATION ENGINE
+   NATIVE OS LOCK-SCREEN VAPID PUSH NOTIFICATION ENGINE
    ========================================== */
 
 (function () {
@@ -10,6 +10,8 @@
 
   const DEFAULT_SUPABASE_URL = 'https://jamsrlijvqypdxucvhox.supabase.co';
   const DEFAULT_SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImphbXNybGlqdnF5cGR4dWN2aG94Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODY1MDczOTksImV4cCI6MjEwMjA4MzM5OX0.iInG76ebAetpdWrOefmqSlvpTeBqxt0z_RW_OUx6Ah4';
+
+  const VAPID_PUBLIC_KEY = 'BCjVIB7D_7Z-YY7DB26ZrVBtx_S4sOpjxfGo7hjnntCeY82kjRGhmqpwztsmFsfH8a7bAN_oK54LkW9vkwqiaHU';
 
   const DEFAULT_U1_HABITS = [
     "💧 Drink 4L Water",
@@ -257,10 +259,106 @@
         .then((reg) => {
           state.swRegistration = reg;
           console.log('✓ Service Worker registered successfully');
+          if (Notification.permission === 'granted') {
+            registerVapidPushSubscription();
+          }
         })
         .catch((err) => {
           console.warn('Service Worker registration failed:', err);
         });
+    }
+  }
+
+  function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - base64String.length % 4) % 4);
+    const base64 = (base64String + padding)
+      .replace(/\-/g, '+')
+      .replace(/_/g, '/');
+
+    const rawData = window.atob(base64);
+    const outputArray = new Uint8Array(rawData.length);
+
+    for (let i = 0; i < rawData.length; ++i) {
+      outputArray[i] = rawData.charCodeAt(i);
+    }
+    return outputArray;
+  }
+
+  async function registerVapidPushSubscription() {
+    if (!state.swRegistration || !('pushManager' in state.swRegistration)) return;
+    try {
+      const convertedKey = urlBase64ToUint8Array(VAPID_PUBLIC_KEY);
+      let sub = await state.swRegistration.pushManager.getSubscription();
+      if (!sub) {
+        sub = await state.swRegistration.pushManager.subscribe({
+          userVisibleOnly: true,
+          applicationServerKey: convertedKey
+        });
+      }
+      if (sub) {
+        savePushTokenToSupabase(sub);
+      }
+    } catch (e) {
+      console.warn('VAPID Push Subscription error:', e);
+    }
+  }
+
+  async function savePushTokenToSupabase(sub) {
+    if (!state.supabaseClient) return;
+    try {
+      const myUser = state.settings.myUser || 'u1';
+      const rowRes = await state.supabaseClient.from('habit_history').select('*').eq('date', '_PUSH_TOKENS_');
+      
+      let u1Val = {};
+      let u2Val = {};
+
+      if (rowRes.data && rowRes.data.length > 0) {
+        const row = rowRes.data[0];
+        u1Val = typeof row.u1_ticks === 'string' ? JSON.parse(row.u1_ticks) : (row.u1_ticks || {});
+        u2Val = typeof row.u2_ticks === 'string' ? JSON.parse(row.u2_ticks) : (row.u2_ticks || {});
+      }
+
+      const subObj = sub.toJSON ? sub.toJSON() : sub;
+      if (myUser === 'u1') u1Val = { sub: subObj, updatedAt: Date.now() };
+      else u2Val = { sub: subObj, updatedAt: Date.now() };
+
+      await state.supabaseClient.from('habit_history').upsert({
+        date: '_PUSH_TOKENS_',
+        u1_ticks: u1Val,
+        u2_ticks: u2Val,
+        updated_at: new Date().toISOString()
+      });
+    } catch (e) {
+      console.warn('Error saving push token:', e);
+    }
+  }
+
+  async function dispatchVapidLockscreenPush(partnerUserKey, title, bodyText, senderDp) {
+    if (!state.supabaseClient) return;
+    try {
+      const res = await state.supabaseClient.from('habit_history').select('*').eq('date', '_PUSH_TOKENS_');
+      if (res.data && res.data.length > 0) {
+        const row = res.data[0];
+        const partnerPayload = partnerUserKey === 'u1' ? row.u1_ticks : row.u2_ticks;
+        const subData = typeof partnerPayload === 'string' ? JSON.parse(partnerPayload) : partnerPayload;
+
+        if (subData && subData.sub) {
+          fetch('/.netlify/functions/push', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subscription: subData.sub,
+              title: title,
+              body: bodyText,
+              icon: senderDp || 'apple-touch-icon.png',
+              badge: senderDp || 'icon.png',
+              image: senderDp || undefined
+            })
+          }).catch(e => console.warn('Dispatch VAPID error:', e));
+        }
+      }
+    } catch (e) {
+      console.warn('Dispatch VAPID exception:', e);
     }
   }
 
@@ -282,8 +380,9 @@
       updateNotifBellState();
 
       if (permission === 'granted') {
-        showToast('🔔 System Push Notifications Enabled!');
-        triggerDeviceNotification('🔔 Notifications Enabled!', 'You will receive instant lock-screen & on-screen push notifications for chat, boosts, acknowledgments & reminders!', 'apple-touch-icon.png');
+        showToast('🔔 Lock-Screen Push Notifications Enabled!');
+        registerVapidPushSubscription();
+        triggerDeviceNotification('Notifications Active 🔔', 'You will receive instant lock-screen push notifications for chat, boosts & reminders with profile photos!', 'apple-touch-icon.png');
         return true;
       }
       return false;
@@ -299,7 +398,7 @@
       dom.notifBellIcon.className = 'fa-solid fa-bell';
       if (dom.notifBellBtn) dom.notifBellBtn.style.color = 'var(--u1-color)';
       if (dom.settingsEnableNotifBtn) {
-        dom.settingsEnableNotifBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Notifications Active';
+        dom.settingsEnableNotifBtn.innerHTML = '<i class="fa-solid fa-circle-check"></i> Lock-Screen Push Active';
         dom.settingsEnableNotifBtn.className = 'btn btn-secondary btn-full active';
       }
     } else {
@@ -308,20 +407,23 @@
     }
   }
 
-  // SYSTEM NOTIFICATION BANNER ENGINE (LOCK SCREEN & SCREEN DROP-DOWN BANNERS)
-  function triggerDeviceNotification(title, bodyText, iconPath) {
+  // SYSTEM NOTIFICATION BANNER ENGINE WITH SENDER PROFILE DP EMBED
+  function triggerDeviceNotification(title, bodyText, senderDp) {
     if (!('Notification' in window) || Notification.permission !== 'granted') {
       return;
     }
 
+    const dpUrl = senderDp || 'apple-touch-icon.png';
+
     const options = {
       body: bodyText,
-      icon: iconPath || 'apple-touch-icon.png',
-      badge: 'icon.png',
+      icon: dpUrl,
+      badge: dpUrl,
+      image: dpUrl,
       vibrate: [300, 100, 300, 100, 300],
-      tag: '75hard_push_' + Date.now(),
+      tag: 'duo_notif_' + Date.now(),
       renotify: true,
-      requireInteraction: false,
+      requireInteraction: true,
       data: { url: '/' }
     };
 
@@ -392,7 +494,7 @@
     const randomMsg = pool[Math.floor(Math.random() * pool.length)];
 
     // TRIGGER SYSTEM PUSH NOTIFICATION
-    triggerDeviceNotification(`🔥 75 Hard Check: ${myName} (${completedCount}/5)`, randomMsg, myDp);
+    triggerDeviceNotification(`Accountability Check 🔥`, randomMsg, myDp);
     localStorage.setItem(STORAGE_KEY_LAST_REMINDER, now.toString());
   }
 
@@ -483,6 +585,10 @@
     } else {
       if (dom.u1HabitsSettingsGroup) dom.u1HabitsSettingsGroup.classList.remove('hidden');
       if (dom.u2HabitsSettingsGroup) dom.u2HabitsSettingsGroup.classList.remove('hidden');
+    }
+
+    if (Notification.permission === 'granted') {
+      registerVapidPushSubscription();
     }
 
     renderBanterChat();
@@ -597,7 +703,7 @@
               const partnerName = state.settings.myUser === 'u1' ? u2Name : u1Name;
               const partnerDp = state.settings.myUser === 'u1' ? 'sanjana.jpg' : 'adarsh.jpg';
 
-              triggerDeviceNotification(`⚙️ Settings Synced`, `${partnerName} updated habit names or challenge settings!`, partnerDp);
+              triggerDeviceNotification(`Settings Synced ⚙️`, `${partnerName} updated habit names or challenge settings!`, partnerDp);
               showToast('⚙️ Habit names updated from partner!');
               return;
             }
@@ -632,19 +738,19 @@
               const partnerName = partnerUserKey === 'u1' ? u1Name : u2Name;
               const partnerDp = partnerUserKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
 
-              triggerDeviceNotification(`🌟 ${partnerName} finished 5/5 Habits!`, `${partnerName} just achieved a 100% Green Day! Hurry up and catch up! 🔥`, partnerDp);
+              triggerDeviceNotification(`${partnerName} finished 5/5 Habits! 🌟`, `${partnerName} just achieved a 100% Green Day! Hurry up and catch up! 🔥`, partnerDp);
               showToast(`🌟 ${partnerName} finished 5/5 Habits!`);
             }
 
-            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES
+            // TRIGGER SYSTEM PUSH NOTIFICATION FOR NEW CHAT MESSAGES WITH CLEAN SENDER TITLE & SENDER PHOTO
             if (newChatList.length > prevChatCount) {
               const latestMsg = newChatList[newChatList.length - 1];
               if (latestMsg && latestMsg.sender !== state.settings.myUser) {
                 const senderName = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? u1Name : u2Name;
                 const senderDp = (latestMsg.sender === 'u1' || latestMsg.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
 
-                // Trigger System Push Notification Banner on phone lock screen / top bar
-                triggerDeviceNotification(`💬 Banter from ${senderName}`, latestMsg.text, senderDp);
+                // CLEAN TITLE: "Sanjana" or "Adarsh" with Profile DP icon
+                triggerDeviceNotification(senderName, latestMsg.text, senderDp);
 
                 if (!state.isChatOpen) {
                   state.unreadChatCount += (newChatList.length - prevChatCount);
@@ -663,7 +769,7 @@
               const senderName = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? u1Name : u2Name;
               const senderDp = (newNudge.sender === 'u1' || newNudge.sender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
 
-              triggerDeviceNotification(`❤️ Boost from ${senderName}!`, newNudge.text, senderDp);
+              triggerDeviceNotification(`${senderName} Boost ❤️`, newNudge.text, senderDp);
             }
 
             // TRIGGER SYSTEM PUSH NOTIFICATION WHEN PARTNER ACKNOWLEDGES A BOOST
@@ -676,7 +782,7 @@
                 const partnerName = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? u1Name : u2Name;
                 const partnerDp = (newNudge.ackSender === 'u1' || newNudge.ackSender === u1Name) ? 'adarsh.jpg' : 'sanjana.jpg';
 
-                triggerDeviceNotification(`❤️ Boost Acknowledged by ${partnerName}!`, `${partnerName} tapped "Thanks! Let's Crush It!" 💪`, partnerDp);
+                triggerDeviceNotification(`${partnerName} ❤️`, `Acknowledged your boost! "Thanks! Let's Crush It!" 💪`, partnerDp);
                 showToast(`❤️ ${partnerName} acknowledged your boost!`);
                 if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 100]);
               }
@@ -1063,6 +1169,11 @@
     if (!entry.chat) entry.chat = [];
 
     const senderKey = state.settings.myUser || 'u1';
+    const u1Name = state.settings.u1Name || 'Adarsh';
+    const u2Name = state.settings.u2Name || 'Sanjana';
+    const senderDisplayName = senderKey === 'u1' ? u1Name : u2Name;
+    const senderDp = senderKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
+    const partnerKey = senderKey === 'u1' ? 'u2' : 'u1';
     const nowStr = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
 
     entry.chat.push({
@@ -1078,6 +1189,9 @@
     if (dom.chatInput) dom.chatInput.value = '';
 
     await syncRowToSupabase(state.activeDateStr);
+
+    // Dispatch Native OS Lock-Screen Push Alert to Partner!
+    dispatchVapidLockscreenPush(partnerKey, senderDisplayName, text.trim(), senderDp);
   }
 
   function checkPendingPopupEncouragement() {
@@ -1109,8 +1223,8 @@
 
     if (dom.encouragementPopup) dom.encouragementPopup.classList.remove('hidden');
 
-    // Also trigger system push notification banner if app was opened from locked state!
-    triggerDeviceNotification(`❤️ Boost from ${senderName}!`, nudge.text, senderDp);
+    // Also trigger clean push notification banner with sender's DP!
+    triggerDeviceNotification(`${senderName} Boost ❤️`, nudge.text, senderDp);
 
     if (dom.encDismissBtn) {
       dom.encDismissBtn.onclick = async () => {
@@ -1141,6 +1255,8 @@
     const u1Name = state.settings.u1Name || 'Adarsh';
     const u2Name = state.settings.u2Name || 'Sanjana';
     const senderName = senderKey === 'u1' ? u1Name : u2Name;
+    const senderDp = senderKey === 'u1' ? 'adarsh.jpg' : 'sanjana.jpg';
+    const partnerKey = senderKey === 'u1' ? 'u2' : 'u1';
 
     const nudgeObj = {
       id: 'nudge_' + Date.now(),
@@ -1159,6 +1275,9 @@
     await syncRowToSupabase(todayStr);
 
     showToast(`❤️ Boost sent to ${senderKey === 'u1' ? u2Name : u1Name}!`);
+
+    // Dispatch Native OS Lock-Screen Push Alert to Partner!
+    dispatchVapidLockscreenPush(partnerKey, `${senderName} Boost ❤️`, messageText, senderDp);
   }
 
   function renderIndividualMatrices() {

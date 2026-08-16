@@ -1,0 +1,12 @@
+{
+  "name": "75-hard-duo",
+  "version": "1.0.0",
+  "description": "75 Hard Duo Progressive Web App",
+  "main": "app.js",
+  "scripts": {
+    "build": "node build.js"
+  },
+  "dependencies": {
+    "web-push": "^3.6.7"
+  }
+}
